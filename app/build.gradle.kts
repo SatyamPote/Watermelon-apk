@@ -71,8 +71,7 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
-    // Media3
-    implementation(libs.media3.exoplayer)
+    // Media3 (service declared in Manifest)
     implementation(libs.media3.session)
 
     testImplementation(libs.junit)
