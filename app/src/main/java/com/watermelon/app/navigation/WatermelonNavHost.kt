@@ -19,6 +19,8 @@ import com.watermelon.feature.auth.RegisterScreen
 import com.watermelon.feature.home.HomeScreen
 import com.watermelon.feature.player.PlayerScreen
 import com.watermelon.feature.player.PlayerViewModel
+import com.watermelon.feature.search.SearchScreen
+import com.watermelon.feature.settings.SettingsScreen
 import com.watermelon.feature.settings.SettingsScreen
 import kotlinx.coroutines.delay
 
@@ -98,7 +100,18 @@ fun WatermelonNavHost(
             )
         }
         composable(Routes.SEARCH) {
-            // TODO: SearchScreen
+            SearchScreen(
+                onBackClick = { navController.popBackStack() },
+                onSongClick = { song: Song ->
+                    playerViewModel.loadAndPlay(
+                        song.audioUrl ?: "",
+                        song.title,
+                        song.artistName,
+                        song.coverUrl ?: ""
+                    )
+                    navController.navigate(Routes.PLAYER)
+                }
+            )
         }
         composable(Routes.LIBRARY) {
             // TODO: LibraryScreen

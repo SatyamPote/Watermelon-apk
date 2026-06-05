@@ -11,4 +11,5 @@ import kotlinx.coroutines.flow.Flow
 interface MusicCatalogRepository {
     fun getTrendingMusic(): Flow<List<Song>>
     fun getRecommendedPlaylists(): Flow<List<Playlist>>
+    fun search(query: String): Flow<List<Song>>
 }

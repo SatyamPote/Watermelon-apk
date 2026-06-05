@@ -5,6 +5,7 @@ import com.watermelon.domain.model.Song
 import com.watermelon.domain.repository.MusicCatalogRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,4 +34,11 @@ class MusicCatalogRepositoryImpl @Inject constructor() : MusicCatalogRepository 
 
     override fun getTrendingMusic(): Flow<List<Song>> = flowOf(mockSongs.shuffled())
     override fun getRecommendedPlaylists(): Flow<List<Playlist>> = flowOf(mockPlaylists)
+    override fun search(query: String): Flow<List<Song>> = flowOf(mockSongs).map { songs ->
+        if (query.isBlank()) emptyList()
+        else songs.filter {
+            it.title.contains(query, ignoreCase = true) ||
+            it.artistName.contains(query, ignoreCase = true)
+        }
+    }
 }
