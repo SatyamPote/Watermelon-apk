@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -12,6 +13,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.watermelon.core.navigation.Routes
+import com.watermelon.feature.home.HomeScreen
+import kotlinx.coroutines.delay
 
 @Composable
 fun WatermelonNavHost(
@@ -25,7 +28,12 @@ fun WatermelonNavHost(
         modifier = modifier
     ) {
         composable(Routes.SPLASH) {
-            // Temporary placeholder — confirms app & theme are alive
+            LaunchedEffect(Unit) {
+                delay(1500)
+                navController.navigate(Routes.HOME) {
+                    popUpTo(Routes.SPLASH) { inclusive = true }
+                }
+            }
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -50,7 +58,7 @@ fun WatermelonNavHost(
             // TODO: ForgotPasswordScreen
         }
         composable(Routes.HOME) {
-            // TODO: HomeScreen
+            HomeScreen()
         }
         composable(Routes.SEARCH) {
             // TODO: SearchScreen
