@@ -19,6 +19,7 @@ import com.watermelon.feature.auth.RegisterScreen
 import com.watermelon.feature.home.HomeScreen
 import com.watermelon.feature.player.PlayerScreen
 import com.watermelon.feature.player.PlayerViewModel
+import com.watermelon.feature.settings.SettingsScreen
 import kotlinx.coroutines.delay
 
 @Composable
@@ -83,6 +84,7 @@ fun WatermelonNavHost(
         composable(Routes.HOME) {
             HomeScreen(
                 onSearchClick = { navController.navigate(Routes.SEARCH) },
+                onSettingsClick = { navController.navigate(Routes.SETTINGS) },
                 onSongClick = { song: Song ->
                     playerViewModel.loadAndPlay(
                         song.audioUrl ?: "",
@@ -123,7 +125,14 @@ fun WatermelonNavHost(
             // TODO: ProfileScreen
         }
         composable(Routes.SETTINGS) {
-            // TODO: SettingsScreen
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onLogoutComplete = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.HOME) { inclusive = true }
+                    }
+                }
+            )
         }
         composable(Routes.ABOUT) {
             // TODO: AboutScreen

@@ -21,11 +21,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -49,6 +51,7 @@ import com.watermelon.domain.model.Song
 @Composable
 fun HomeScreen(
     onSearchClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     onSongClick: (Song) -> Unit = {},
     onPlaylistClick: (Playlist) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
@@ -58,6 +61,7 @@ fun HomeScreen(
     HomeScreenContent(
         uiState = uiState,
         onSearchClick = onSearchClick,
+        onSettingsClick = onSettingsClick,
         onSongClick = onSongClick,
         onPlaylistClick = onPlaylistClick
     )
@@ -68,6 +72,7 @@ fun HomeScreen(
 private fun HomeScreenContent(
     uiState: HomeUiState,
     onSearchClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     onSongClick: (Song) -> Unit,
     onPlaylistClick: (Playlist) -> Unit
 ) {
@@ -79,6 +84,14 @@ private fun HomeScreenContent(
                         text = uiState.welcomeMessage,
                         style = MaterialTheme.typography.headlineMedium
                     )
+                },
+                actions = {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings"
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
