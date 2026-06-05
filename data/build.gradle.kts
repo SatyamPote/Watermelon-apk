@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -6,12 +8,35 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+val supabaseProperties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+
+fun getSupabaseProperty(name: String, defaultValue: String = ""): String {
+    return supabaseProperties.getProperty(name, defaultValue)
+}
+
 android {
     namespace = "com.watermelon.data"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    buildTypes {
+        debug {
+            buildConfigField("String", "SUPABASE_URL", "\"${getSupabaseProperty("SUPABASE_URL")}\"")
+            buildConfigField("String", "SUPABASE_KEY", "\"${getSupabaseProperty("SUPABASE_KEY")}\"")
+        }
+        release {
+            buildConfigField("String", "SUPABASE_URL", "\"${getSupabaseProperty("SUPABASE_URL")}\"")
+            buildConfigField("String", "SUPABASE_KEY", "\"${getSupabaseProperty("SUPABASE_KEY")}\"")
+        }
     }
 
     compileOptions {
