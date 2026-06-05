@@ -1,6 +1,7 @@
 package com.watermelon.feature.home
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -218,14 +220,38 @@ private fun SongItem(song: Song, onClick: () -> Unit) {
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.Start
     ) {
-        AsyncImage(
-            model = song.coverUrl,
-            contentDescription = song.title,
-            modifier = Modifier
-                .size(140.dp)
-                .clip(RoundedCornerShape(12.dp)),
-            contentScale = ContentScale.Crop
-        )
+        Box(modifier = Modifier.size(140.dp)) {
+            AsyncImage(
+                model = song.coverUrl,
+                contentDescription = song.title,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
+            )
+            // Play overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(6.dp),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                androidx.compose.material3.Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    shadowElevation = 4.dp
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = "Play",
+                        modifier = Modifier
+                            .size(32.dp)
+                            .padding(4.dp),
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+        }
         Spacer(modifier = Modifier.height(WatermelonSpacing.sm))
         Text(
             text = song.title,

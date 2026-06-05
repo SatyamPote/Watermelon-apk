@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -40,9 +41,16 @@ dependencies {
     implementation(libs.okhttp.logging)
 
     // Supabase
+    implementation(libs.supabase.core)
     implementation(libs.supabase.gotrue)
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.storage)
+
+    // Ktor
+    implementation(libs.ktor.client.android)
+
+    // Serialization
+    implementation(libs.kotlinx.serialization.json)
 
     // Hilt
     implementation(libs.hilt.android)

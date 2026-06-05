@@ -24,3 +24,12 @@ local.properties
 !gradle-wrapper.jar
 !gradlew
 !gradlew.bat
+
+# Local environment and secret files
+.env
+.env.*
+.envrc
+*.jks
+*.keystore
+*.p12
+*.pem

@@ -13,7 +13,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.watermelon.core.navigation.Routes
+import com.watermelon.feature.auth.ForgotPasswordScreen
+import com.watermelon.feature.auth.LoginScreen
+import com.watermelon.feature.auth.RegisterScreen
 import com.watermelon.feature.home.HomeScreen
+import com.watermelon.feature.player.PlayerScreen
 import kotlinx.coroutines.delay
 
 @Composable
@@ -30,7 +34,7 @@ fun WatermelonNavHost(
         composable(Routes.SPLASH) {
             LaunchedEffect(Unit) {
                 delay(1500)
-                navController.navigate(Routes.HOME) {
+                navController.navigate(Routes.LOGIN) {
                     popUpTo(Routes.SPLASH) { inclusive = true }
                 }
             }
@@ -49,16 +53,35 @@ fun WatermelonNavHost(
             // TODO: OnboardingScreen
         }
         composable(Routes.LOGIN) {
-            // TODO: LoginScreen
+            LoginScreen(
+                onNavigateToRegister = { navController.navigate(Routes.REGISTER) },
+                onNavigateToForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) },
+                onAuthSuccess = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                }
+            )
         }
         composable(Routes.REGISTER) {
-            // TODO: RegisterScreen
+            RegisterScreen(
+                onNavigateToLogin = { navController.popBackStack() },
+                onAuthSuccess = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                }
+            )
         }
         composable(Routes.FORGOT_PASSWORD) {
-            // TODO: ForgotPasswordScreen
+            ForgotPasswordScreen(
+                onNavigateToLogin = { navController.popBackStack() }
+            )
         }
         composable(Routes.HOME) {
-            HomeScreen()
+            HomeScreen(
+                onSongClick = { navController.navigate(Routes.PLAYER) }
+            )
         }
         composable(Routes.SEARCH) {
             // TODO: SearchScreen
@@ -73,7 +96,9 @@ fun WatermelonNavHost(
             // TODO: CreatePlaylistScreen
         }
         composable(Routes.PLAYER) {
-            // TODO: PlayerScreen
+            PlayerScreen(
+                onBackClick = { navController.popBackStack() }
+            )
         }
         composable(Routes.QUEUE) {
             // TODO: QueueScreen
