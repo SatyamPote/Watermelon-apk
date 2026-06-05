@@ -1,6 +1,11 @@
 package com.watermelon.app.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -20,7 +25,17 @@ fun WatermelonNavHost(
         modifier = modifier
     ) {
         composable(Routes.SPLASH) {
-            // TODO: SplashScreen
+            // Temporary placeholder — confirms app & theme are alive
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Watermelon",
+                    style = MaterialTheme.typography.displayLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
         composable(Routes.ONBOARDING) {
             // TODO: OnboardingScreen

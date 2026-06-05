@@ -1,0 +1,16 @@
+-- Merging decision tree log ---
+manifest
+ADDED from C:\Users\satya\Documents\GitHub\fluxion\Watermelon-apk\core\designsystem\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest3521970153974320582.xml:2:13-83
+INJECTED from C:\Users\satya\Documents\GitHub\fluxion\Watermelon-apk\core\designsystem\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest3521970153974320582.xml:2:13-83
+	package
+		INJECTED from C:\Users\satya\Documents\GitHub\fluxion\Watermelon-apk\core\designsystem\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest3521970153974320582.xml
+	xmlns:android
+		ADDED from C:\Users\satya\Documents\GitHub\fluxion\Watermelon-apk\core\designsystem\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest3521970153974320582.xml:2:23-81
+uses-sdk
+INJECTED from C:\Users\satya\Documents\GitHub\fluxion\Watermelon-apk\core\designsystem\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest3521970153974320582.xml reason: use-sdk injection requested
+INJECTED from C:\Users\satya\Documents\GitHub\fluxion\Watermelon-apk\core\designsystem\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest3521970153974320582.xml
+INJECTED from C:\Users\satya\Documents\GitHub\fluxion\Watermelon-apk\core\designsystem\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest3521970153974320582.xml
+	android:targetSdkVersion
+		INJECTED from C:\Users\satya\Documents\GitHub\fluxion\Watermelon-apk\core\designsystem\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest3521970153974320582.xml
+	android:minSdkVersion
+		INJECTED from C:\Users\satya\Documents\GitHub\fluxion\Watermelon-apk\core\designsystem\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest3521970153974320582.xml
