@@ -1,11 +1,17 @@
 package com.watermelon.data.di
 
+import com.watermelon.data.remote.lyrics.LyricsApi
+import com.watermelon.data.remote.podcastindex.PodcastIndexApi
+import com.watermelon.data.remote.podcastindex.PodcastIndexAuthInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import javax.inject.Qualifier
 import javax.inject.Singleton
 
 @Module
@@ -23,4 +29,39 @@ object NetworkModule {
             )
             .build()
     }
+
+    @Provides
+    @Singleton
+    @PodcastIndexClient
+    fun providePodcastIndexClient(base: OkHttpClient): OkHttpClient {
+        return base.newBuilder()
+            .addInterceptor(PodcastIndexAuthInterceptor())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun providePodcastIndexApi(@PodcastIndexClient client: OkHttpClient): PodcastIndexApi {
+        return Retrofit.Builder()
+            .baseUrl("https://api.podcastindex.org/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(PodcastIndexApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLyricsApi(base: OkHttpClient): LyricsApi {
+        return Retrofit.Builder()
+            .baseUrl("https://api.lyrics.ovh/")
+            .client(base)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(LyricsApi::class.java)
+    }
 }
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class PodcastIndexClient

@@ -32,10 +32,14 @@ android {
         debug {
             buildConfigField("String", "SUPABASE_URL", "\"${getSupabaseProperty("SUPABASE_URL")}\"")
             buildConfigField("String", "SUPABASE_KEY", "\"${getSupabaseProperty("SUPABASE_KEY")}\"")
+            buildConfigField("String", "PODCAST_INDEX_API_KEY", "\"${getSupabaseProperty("PODCAST_INDEX_API_KEY")}\"")
+            buildConfigField("String", "PODCAST_INDEX_SECRET", "\"${getSupabaseProperty("PODCAST_INDEX_SECRET")}\"")
         }
         release {
             buildConfigField("String", "SUPABASE_URL", "\"${getSupabaseProperty("SUPABASE_URL")}\"")
             buildConfigField("String", "SUPABASE_KEY", "\"${getSupabaseProperty("SUPABASE_KEY")}\"")
+            buildConfigField("String", "PODCAST_INDEX_API_KEY", "\"${getSupabaseProperty("PODCAST_INDEX_API_KEY")}\"")
+            buildConfigField("String", "PODCAST_INDEX_SECRET", "\"${getSupabaseProperty("PODCAST_INDEX_SECRET")}\"")
         }
     }
 
@@ -86,9 +90,8 @@ dependencies {
     // YouTube
     implementation(libs.newpipe.extractor)
 
-    // yt-dlp
+    // yt-dlp (URL extraction only — ffmpeg not needed)
     implementation(libs.youtubedl.android.library)
-    implementation(libs.youtubedl.android.ffmpeg)
 
     // Logging
     implementation(libs.timber)

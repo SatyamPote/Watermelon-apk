@@ -206,6 +206,32 @@ fun PlayerScreen(
                     }
                 }
             }
+
+            if (state.isLyricsLoading) {
+                Spacer(modifier = Modifier.height(16.dp))
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            } else if (!state.lyrics.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Lyrics",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = state.lyrics,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+            }
         }
     }
 }

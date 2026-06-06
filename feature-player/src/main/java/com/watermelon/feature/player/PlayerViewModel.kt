@@ -3,6 +3,7 @@ package com.watermelon.feature.player
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.watermelon.domain.model.Song
+import com.watermelon.domain.repository.LyricsRepository
 import com.watermelon.domain.repository.StreamingRepository
 import com.watermelon.domain.repository.UrlExtractorRepository
 import com.watermelon.domain.repository.UserActionsRepository
@@ -31,14 +32,17 @@ data class PlayerUiState(
     val isShuffleOn: Boolean = false,
     val repeatMode: RepeatMode = RepeatMode.NONE,
     val currentSongId: String = "",
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val lyrics: String? = null,
+    val isLyricsLoading: Boolean = false
 )
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val streamingRepository: StreamingRepository,
     private val urlExtractor: UrlExtractorRepository,
-    private val userActionsRepository: UserActionsRepository
+    private val userActionsRepository: UserActionsRepository,
+    private val lyricsRepository: LyricsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlayerUiState())
@@ -152,6 +156,21 @@ class PlayerViewModel @Inject constructor(
         loadAndPlay(audioUrl, song.title, song.artistName, song.coverUrl ?: "")
         _uiState.update { it.copy(currentSongId = song.id) }
         updateQueueState()
+        fetchLyrics(song)
+    }
+
+    private fun fetchLyrics(song: Song) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(lyrics = null, isLyricsLoading = true) }
+            val result = lyricsRepository.getLyrics(song.artistName, song.title)
+            result
+                .onSuccess { lyrics ->
+                    _uiState.update { it.copy(lyrics = lyrics, isLyricsLoading = false) }
+                }
+                .onFailure {
+                    _uiState.update { it.copy(lyrics = null, isLyricsLoading = false) }
+                }
+        }
     }
 
     fun retryCurrent() {

@@ -27,6 +27,17 @@ class NewPipeUrlExtractorImpl @Inject constructor(
 
     override suspend fun extractAudioUrl(sourceUrl: String): Result<String> = withContext(Dispatchers.IO) {
         var lastException: Throwable? = null
+
+        // If it's already a direct audio file (non-YouTube), pass through
+        if (sourceUrl.endsWith(".mp3", ignoreCase = true) ||
+            sourceUrl.endsWith(".m4a", ignoreCase = true) ||
+            sourceUrl.endsWith(".ogg", ignoreCase = true) ||
+            sourceUrl.endsWith(".wav", ignoreCase = true) ||
+            (!sourceUrl.contains("youtube") && !sourceUrl.contains("youtu.be"))
+        ) {
+            return@withContext Result.success(sourceUrl)
+        }
+
         val videoId = extractVideoId(sourceUrl)
             ?: return@withContext Result.failure(
                 IllegalStateException("Could not extract video ID from $sourceUrl")
