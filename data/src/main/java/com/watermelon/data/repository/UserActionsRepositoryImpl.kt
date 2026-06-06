@@ -27,6 +27,7 @@ class UserActionsRepositoryImpl @Inject constructor(
             songTitle = song.title,
             songArtist = song.artistName,
             songCoverUrl = song.coverUrl,
+            audioUrl = song.audioUrl,
             actionType = "favorite"
         )
         userActionDao.insert(entity)
@@ -43,6 +44,7 @@ class UserActionsRepositoryImpl @Inject constructor(
             songTitle = song.title,
             songArtist = song.artistName,
             songCoverUrl = song.coverUrl,
+            audioUrl = song.audioUrl,
             actionType = "recent"
         )
         userActionDao.insert(entity)

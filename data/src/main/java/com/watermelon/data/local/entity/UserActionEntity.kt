@@ -12,6 +12,7 @@ data class UserActionEntity(
     val songTitle: String,
     val songArtist: String,
     val songCoverUrl: String?,
+    val audioUrl: String?,
     @ColumnInfo(index = true) val actionType: String, // "favorite", "recent"
     val timestamp: Long = System.currentTimeMillis(),
     val syncedToServer: Boolean = false
@@ -26,7 +27,7 @@ fun UserActionEntity.toSong(): Song = Song(
     albumName = null,
     durationMs = 0L,
     coverUrl = songCoverUrl,
-    audioUrl = null,
+    audioUrl = audioUrl,
     genre = null,
     releaseDate = null
 )

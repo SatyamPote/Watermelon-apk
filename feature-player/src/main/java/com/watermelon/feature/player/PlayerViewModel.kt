@@ -147,7 +147,9 @@ class PlayerViewModel @Inject constructor(
             val favorites = runCatching { userActionsRepository.getFavorites().first() }.getOrDefault(emptyList())
             _uiState.update { it.copy(isFavorite = favorites.any { f -> f.id == song.id }) }
         }
-        loadAndPlay(song.audioUrl ?: "", song.title, song.artistName, song.coverUrl ?: "")
+        val audioUrl = song.audioUrl?.takeIf { it.isNotBlank() }
+            ?: "https://www.youtube.com/watch?v=${song.id}"
+        loadAndPlay(audioUrl, song.title, song.artistName, song.coverUrl ?: "")
         _uiState.update { it.copy(currentSongId = song.id) }
         updateQueueState()
     }

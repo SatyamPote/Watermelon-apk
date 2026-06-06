@@ -23,7 +23,7 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "watermelon.db"
-        ).build()
+        ).fallbackToDestructiveMigration().build()
     }
 
     @Provides
