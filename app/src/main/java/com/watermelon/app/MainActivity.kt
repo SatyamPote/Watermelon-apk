@@ -1,5 +1,6 @@
 package com.watermelon.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -41,6 +42,14 @@ class MainActivity : ComponentActivity() {
 
                     val currentBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentRoute = currentBackStackEntry?.destination?.route
+
+                    val isPlaying by playerViewModel.uiState.collectAsState()
+                    LaunchedEffect(isPlaying.isPlaying) {
+                        if (isPlaying.isPlaying) {
+                            val intent = Intent(activity, PlaybackService::class.java)
+                            activity.startForegroundService(intent)
+                        }
+                    }
 
                     val hideMiniPlayerRoutes = setOf(
                         Routes.PLAYER,

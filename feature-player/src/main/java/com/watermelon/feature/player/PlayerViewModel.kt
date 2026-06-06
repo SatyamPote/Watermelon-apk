@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.watermelon.domain.model.Song
 import com.watermelon.domain.repository.StreamingRepository
 import com.watermelon.domain.repository.UrlExtractorRepository
+import com.watermelon.domain.repository.UserActionsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,13 +29,15 @@ data class PlayerUiState(
     val hasPrevious: Boolean = false,
     val isShuffleOn: Boolean = false,
     val repeatMode: RepeatMode = RepeatMode.NONE,
-    val currentSongId: String = ""
+    val currentSongId: String = "",
+    val isFavorite: Boolean = false
 )
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val streamingRepository: StreamingRepository,
-    private val urlExtractor: UrlExtractorRepository
+    private val urlExtractor: UrlExtractorRepository,
+    private val userActionsRepository: UserActionsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlayerUiState())
@@ -138,6 +141,11 @@ class PlayerViewModel @Inject constructor(
 
     private fun playCurrent() {
         val song = internalQueue.getOrNull(currentIndex) ?: return
+        viewModelScope.launch {
+            runCatching { userActionsRepository.recordRecentlyPlayed(song) }
+            val favorites = runCatching { userActionsRepository.getFavorites().first() }.getOrDefault(emptyList())
+            _uiState.update { it.copy(isFavorite = favorites.any { f -> f.id == song.id }) }
+        }
         loadAndPlay(song.audioUrl ?: "", song.title, song.artistName, song.coverUrl ?: "")
         _uiState.update { it.copy(currentSongId = song.id) }
         updateQueueState()
@@ -204,6 +212,21 @@ class PlayerViewModel @Inject constructor(
         updateQueueState()
     }
 
+    fun toggleFavorite() {
+        val song = internalQueue.getOrNull(currentIndex) ?: return
+        viewModelScope.launch {
+            runCatching {
+                if (_uiState.value.isFavorite) {
+                    userActionsRepository.removeFromFavorites(song.id)
+                } else {
+                    userActionsRepository.addToFavorites(song)
+                }
+            }
+            val favorites = runCatching { userActionsRepository.getFavorites().first() }.getOrDefault(emptyList())
+            _uiState.update { it.copy(isFavorite = favorites.any { f -> f.id == song.id }) }
+        }
+    }
+
     fun jumpToQueueIndex(index: Int) {
         if (index in internalQueue.indices) {
             currentIndex = index
@@ -248,6 +271,14 @@ class PlayerViewModel @Inject constructor(
                 repeatMode = repeatMode,
                 currentSongId = internalQueue.getOrNull(currentIndex)?.id ?: ""
             )
+        }
+    }
+
+    fun checkFavoriteStatus() {
+        val song = internalQueue.getOrNull(currentIndex) ?: return
+        viewModelScope.launch {
+            val favorites = runCatching { userActionsRepository.getFavorites().first() }.getOrDefault(emptyList())
+            _uiState.update { it.copy(isFavorite = favorites.any { f -> f.id == song.id }) }
         }
     }
 

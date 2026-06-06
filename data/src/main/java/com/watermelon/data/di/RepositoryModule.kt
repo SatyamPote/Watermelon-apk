@@ -52,4 +52,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindUrlExtractorRepository(impl: NewPipeUrlExtractorImpl): UrlExtractorRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPlaylistRepository(impl: PlaylistRepositoryImpl): PlaylistRepository
 }

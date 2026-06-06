@@ -35,8 +35,9 @@ fun LibraryScreen(
 ) {
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+    val recentlyPlayed by viewModel.recentlyPlayed.collectAsStateWithLifecycle()
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Playlists", "Favorites")
+    val tabs = listOf("Playlists", "Favorites", "Feed")
 
     Scaffold(
         topBar = {
@@ -71,8 +72,14 @@ fun LibraryScreen(
                     onPlaylistClick = onPlaylistClick,
                     modifier = Modifier.fillMaxSize()
                 )
-                1 -> FavoriteList(
-                    favorites = favorites,
+                1 -> SongList(
+                    songs = favorites,
+                    onSongClick = onSongClick,
+                    emptyText = "No favorites yet",
+                    modifier = Modifier.fillMaxSize()
+                )
+                2 -> FeedContent(
+                    recentlyPlayed = recentlyPlayed,
                     onSongClick = onSongClick,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -142,15 +149,16 @@ private fun PlaylistList(
 }
 
 @Composable
-private fun FavoriteList(
-    favorites: List<Song>,
+private fun SongList(
+    songs: List<Song>,
     onSongClick: (Song) -> Unit,
+    emptyText: String,
     modifier: Modifier = Modifier
 ) {
-    if (favorites.isEmpty()) {
+    if (songs.isEmpty()) {
         Box(modifier = modifier, contentAlignment = Alignment.Center) {
             Text(
-                text = "No favorites yet",
+                text = emptyText,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -160,7 +168,7 @@ private fun FavoriteList(
             modifier = modifier.padding(WatermelonSpacing.md),
             verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.md)
         ) {
-            items(favorites, key = { it.id }) { song ->
+            items(songs, key = { it.id }) { song ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -176,6 +184,76 @@ private fun FavoriteList(
                             contentDescription = song.title,
                             modifier = Modifier
                                 .size(56.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                        Spacer(modifier = Modifier.width(WatermelonSpacing.md))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = song.title,
+                                style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = song.artistName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FeedContent(
+    recentlyPlayed: List<Song>,
+    onSongClick: (Song) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier.padding(WatermelonSpacing.md),
+        verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.md)
+    ) {
+        item {
+            Text(
+                text = "Recently Played",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = WatermelonSpacing.sm)
+            )
+        }
+        if (recentlyPlayed.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Play some music to see your activity",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            items(recentlyPlayed, key = { it.id }) { song ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSongClick(song) },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(WatermelonSpacing.md),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AsyncImage(
+                            model = song.coverUrl,
+                            contentDescription = song.title,
+                            modifier = Modifier
+                                .size(48.dp)
                                 .clip(RoundedCornerShape(8.dp))
                         )
                         Spacer(modifier = Modifier.width(WatermelonSpacing.md))

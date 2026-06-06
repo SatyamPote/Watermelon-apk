@@ -2,6 +2,7 @@ package com.watermelon.data.remote.youtube
 
 import com.watermelon.domain.repository.UrlExtractorRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import javax.inject.Inject
@@ -15,12 +16,18 @@ class NewPipeUrlExtractorImpl @Inject constructor(
     private val youtube by lazy { org.schabi.newpipe.extractor.ServiceList.YouTube }
 
     override suspend fun extractAudioUrl(sourceUrl: String): Result<String> = withContext(Dispatchers.IO) {
-        runCatching {
-            val linkHandler = youtube.getStreamLHFactory().fromUrl(sourceUrl)
-            val streamInfo = StreamInfo.getInfo(youtube, linkHandler)
-            val audioStream = streamInfo.audioStreams.maxByOrNull { it.bitrate }
-                ?: throw IllegalStateException("No audio stream available")
-            audioStream.url
+        var lastException: Throwable? = null
+        repeat(3) { attempt ->
+            runCatching {
+                val streamInfo = StreamInfo.getInfo(youtube, sourceUrl)
+                val audioStream = streamInfo.audioStreams.maxByOrNull { it.averageBitrate }
+                    ?: throw IllegalStateException("No audio stream available")
+                return@withContext Result.success(audioStream.content)
+            }.onFailure { e ->
+                lastException = e
+                if (attempt < 2) delay(1000L * (attempt + 1))
+            }
         }
+        Result.failure(lastException ?: IllegalStateException("Extraction failed after 3 attempts"))
     }
 }

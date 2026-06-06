@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.Flow
 interface UserActionsRepository {
     fun getRecentlyPlayed(): Flow<List<Song>>
     fun getFavorites(): Flow<List<Song>>
-    fun getUserPlaylists(): Flow<List<Playlist>>
 
     suspend fun addToFavorites(song: Song): Result<Unit>
     suspend fun removeFromFavorites(songId: String): Result<Unit>

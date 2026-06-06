@@ -1,11 +1,15 @@
 package com.watermelon.data.repository
 
+import com.watermelon.data.local.dao.CachedSongDao
+import com.watermelon.data.local.entity.toCachedEntity
+import com.watermelon.data.local.entity.toSong
 import com.watermelon.data.remote.youtube.NewPipeInitializer
 import com.watermelon.domain.model.Playlist
 import com.watermelon.domain.model.Song
 import com.watermelon.domain.repository.MusicCatalogRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.withContext
@@ -15,10 +19,12 @@ import javax.inject.Singleton
 
 @Singleton
 class MusicCatalogRepositoryImpl @Inject constructor(
-    initializer: NewPipeInitializer
+    initializer: NewPipeInitializer,
+    private val cachedSongDao: CachedSongDao
 ) : MusicCatalogRepository {
 
     private val youtube by lazy { org.schabi.newpipe.extractor.ServiceList.YouTube }
+    private val cacheTtlMs = 60 * 60 * 1000L // 1 hour
 
     private val mockPlaylists = listOf(
         Playlist("1","Chill Vibes","Relax and unwind","https://picsum.photos/seed/p1/300/300","system"),
@@ -28,43 +34,70 @@ class MusicCatalogRepositoryImpl @Inject constructor(
     )
 
     override fun getTrendingMusic(): Flow<List<Song>> = flow {
-        val songs = withContext(Dispatchers.IO) {
-            runCatching {
-                val kioskList = youtube.getKioskList()
-                val extractor = kioskList.getDefaultKioskExtractor()
-                extractor.fetchPage()
-                extractor.initialPage.items
-                    .filterIsInstance<StreamInfoItem>()
-                    .take(20)
-                    .map { it.toSong() }
-            }.getOrElse { getFallbackSongs() }
+        val now = System.currentTimeMillis()
+        val cached = cachedSongDao.getTrendingSongs().firstOrNull() ?: emptyList()
+
+        if (cached.isNotEmpty()) {
+            val freshest = cached.maxOf { it.cachedAt }
+            if (now - freshest < cacheTtlMs) {
+                emit(cached.map { it.toSong() })
+            }
         }
-        emit(songs)
+
+        val fresh = withContext(Dispatchers.IO) {
+            runCatching { fetchTrendingFromYouTube() }.getOrNull()
+        }
+
+        if (fresh != null) {
+            cachedSongDao.clearTrending()
+            cachedSongDao.insertAll(fresh.map { it.toCachedEntity("trending") })
+            emit(fresh)
+        } else if (cached.isEmpty()) {
+            emit(getFallbackSongs())
+        }
     }
 
     override fun getRecommendedPlaylists(): Flow<List<Playlist>> = flowOf(mockPlaylists)
 
     override fun search(query: String): Flow<List<Song>> = flow {
-        val songs = withContext(Dispatchers.IO) {
-            if (query.isBlank()) {
-                emptyList()
-            } else {
-                runCatching {
-                    val extractor = youtube.getSearchExtractor(query)
-                    extractor.fetchPage()
-                    extractor.initialPage.items
-                        .filterIsInstance<StreamInfoItem>()
-                        .take(20)
-                        .map { it.toSong() }
-                }.getOrElse {
-                    getFallbackSongs().filter { s ->
-                        s.title.contains(query, ignoreCase = true) ||
-                        s.artistName.contains(query, ignoreCase = true)
-                    }
-                }
-            }
+        if (query.isBlank()) {
+            emit(emptyList())
+            return@flow
         }
-        emit(songs)
+
+        val cached = cachedSongDao.getSearchResults(query).firstOrNull() ?: emptyList()
+        if (cached.isNotEmpty()) {
+            emit(cached.map { it.toSong() })
+        }
+
+        val fresh = withContext(Dispatchers.IO) {
+            runCatching { fetchSearchFromYouTube(query) }.getOrNull()
+        }
+
+        if (fresh != null) {
+            cachedSongDao.clearSearchResults(query)
+            cachedSongDao.insertAll(fresh.map { it.toCachedEntity("search", query) })
+            emit(fresh)
+        }
+    }
+
+    private suspend fun fetchTrendingFromYouTube(): List<Song> = withContext(Dispatchers.IO) {
+        val kioskList = youtube.getKioskList()
+        val extractor = kioskList.getDefaultKioskExtractor()
+        extractor.fetchPage()
+        extractor.initialPage.items
+            .filterIsInstance<StreamInfoItem>()
+            .take(20)
+            .map { it.toSong() }
+    }
+
+    private suspend fun fetchSearchFromYouTube(query: String): List<Song> = withContext(Dispatchers.IO) {
+        val extractor = youtube.getSearchExtractor(query)
+        extractor.fetchPage()
+        extractor.initialPage.items
+            .filterIsInstance<StreamInfoItem>()
+            .take(20)
+            .map { it.toSong() }
     }
 
     private fun StreamInfoItem.toSong(): Song {
@@ -78,7 +111,7 @@ class MusicCatalogRepositoryImpl @Inject constructor(
             albumId = null,
             albumName = null,
             durationMs = if (duration > 0) (duration * 1000L) else 0L,
-            coverUrl = thumbnailUrl,
+            coverUrl = thumbnails.firstOrNull()?.url ?: "",
             audioUrl = fullUrl,
             genre = "",
             releaseDate = ""
