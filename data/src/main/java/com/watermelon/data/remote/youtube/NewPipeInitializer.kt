@@ -12,5 +12,15 @@ class NewPipeInitializer @Inject constructor(
 ) {
     init {
         NewPipe.init(downloader, Localization.DEFAULT, ContentCountry.DEFAULT)
+        try {
+            val clazz = Class.forName(
+                "org.schabi.newpipe.extractor.services.youtube.extractors.YoutubeStreamExtractor"
+            )
+            val field = clazz.getDeclaredField("fetchIosClient")
+            field.isAccessible = true
+            field.setBoolean(null, true)
+        } catch (_: Exception) {
+            // Reflection failed, iOS client stays disabled
+        }
     }
 }

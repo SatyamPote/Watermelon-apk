@@ -8,8 +8,10 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,29 +27,39 @@ class NewPipeUrlExtractorImpl @Inject constructor(
 
     override suspend fun extractAudioUrl(sourceUrl: String): Result<String> = withContext(Dispatchers.IO) {
         var lastException: Throwable? = null
-        repeat(2) { attempt ->
-            runCatching {
-                val streamInfo = StreamInfo.getInfo(youtube, sourceUrl)
-                val audioStream = streamInfo.audioStreams
-                    .filter { it.isUrl }
-                    .maxByOrNull { it.averageBitrate }
-                    ?: throw IllegalStateException("No audio stream available")
-                return@withContext Result.success(audioStream.content)
-            }.onFailure { e ->
-                lastException = e
-                if (attempt < 1) delay(1000L * (attempt + 1))
-            }
-        }
-        // Fallback to Piped proxy
+        val videoId = extractVideoId(sourceUrl)
+            ?: return@withContext Result.failure(
+                IllegalStateException("Could not extract video ID from $sourceUrl")
+            )
+
+        // 1. Cobalt.tools - actively maintained YouTube bypass
         runCatching {
-            val videoId = extractVideoId(sourceUrl)
-                ?: throw IllegalStateException("Could not extract video ID from $sourceUrl")
+            val cobaltUrl = fetchCobaltAudioUrl(sourceUrl)
+                ?: throw IllegalStateException("Cobalt returned no audio URL")
+            return@withContext Result.success(cobaltUrl)
+        }.onFailure { e -> lastException = e }
+
+        // 2. NewPipeExtractor
+        runCatching {
+            val streamInfo = StreamInfo.getInfo(youtube, sourceUrl)
+            val audioStream = streamInfo.audioStreams
+                .filter { it.isUrl }
+                .maxByOrNull { it.averageBitrate }
+                ?: throw IllegalStateException("No audio stream available")
+            return@withContext Result.success(audioStream.content)
+        }.onFailure { e ->
+            lastException = e
+        }
+
+        // 3. Piped proxy
+        runCatching {
             val pipedUrl = fetchPipedAudioUrl(videoId)
                 ?: throw IllegalStateException("Piped returned no audio URL")
             return@withContext Result.success(pipedUrl)
         }.onFailure { e ->
             lastException = e
         }
+
         Result.failure(lastException ?: IllegalStateException("Extraction failed after all attempts"))
     }
 
@@ -69,7 +81,7 @@ class NewPipeUrlExtractorImpl @Inject constructor(
             try {
                 val request = Request.Builder()
                     .url("$baseUrl/streams/$videoId")
-                    .header("User-Agent", "Watermelon/1.0")
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                     .build()
                 val response = okHttpClient.newCall(request).execute()
                 if (!response.isSuccessful) continue
@@ -84,5 +96,33 @@ class NewPipeUrlExtractorImpl @Inject constructor(
             }
         }
         return null
+    }
+
+    private fun fetchCobaltAudioUrl(sourceUrl: String): String? {
+        try {
+            val bodyJson = """{"url":"$sourceUrl","isAudioOnly":true,"aFormat":"best"}"""
+            val requestBody = bodyJson.toRequestBody("application/json".toMediaType())
+
+            val request = Request.Builder()
+                .url("https://api.cobalt.tools/api/json")
+                .header("Accept", "application/json")
+                .header("Content-Type", "application/json")
+                .post(requestBody)
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            if (!response.isSuccessful) return null
+            val body = response.body?.string() ?: return null
+            val parsed = json.parseToJsonElement(body).jsonObject
+            val status = parsed["status"]?.jsonPrimitive?.content ?: return null
+            return when (status) {
+                "stream", "tunnel" -> parsed["url"]?.jsonPrimitive?.content
+                "picker" -> parsed["picker"]?.jsonArray?.firstOrNull()
+                    ?.jsonObject?.get("url")?.jsonPrimitive?.content
+                else -> null
+            }
+        } catch (_: Exception) {
+            return null
+        }
     }
 }

@@ -29,6 +29,18 @@ class YouTubeDownloader @Inject constructor(
             }
         }
 
+        val headers = request.headers()
+        val hasUserAgent = headers != null && headers.keys.any {
+            it.equals("User-Agent", ignoreCase = true)
+        }
+        if (!hasUserAgent) {
+            requestBuilder.addHeader(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            )
+        }
+
         val response = okHttpClient.newCall(requestBuilder.build()).execute()
 
         return Response(
