@@ -1,8 +1,7 @@
 package com.watermelon.feature.player
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -37,33 +36,38 @@ fun MiniPlayer(
 
     if (state.currentTitle.isBlank() && state.currentArtist.isBlank()) return
 
-    Column(modifier = modifier) {
-        LinearProgressIndicator(
-            progress = {
-                if (state.durationMs > 0) state.positionMs.toFloat() / state.durationMs.toFloat() else 0f
-            },
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .clickable(onClick = onClick),
-            shape = MaterialTheme.shapes.small,
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        ) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        ),
+        elevation = CardDefaults.cardElevation(6.dp)
+    ) {
+        Column {
+            LinearProgressIndicator(
+                progress = {
+                    if (state.durationMs > 0) state.positionMs.toFloat() / state.durationMs.toFloat() else 0f
+                },
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
             Row(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AsyncImage(
                     model = state.artworkUrl,
                     contentDescription = null,
-                    modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small)
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {

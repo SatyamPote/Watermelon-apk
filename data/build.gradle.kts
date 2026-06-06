@@ -34,12 +34,14 @@ android {
             buildConfigField("String", "SUPABASE_KEY", "\"${getSupabaseProperty("SUPABASE_KEY")}\"")
             buildConfigField("String", "PODCAST_INDEX_API_KEY", "\"${getSupabaseProperty("PODCAST_INDEX_API_KEY")}\"")
             buildConfigField("String", "PODCAST_INDEX_SECRET", "\"${getSupabaseProperty("PODCAST_INDEX_SECRET")}\"")
+            buildConfigField("String", "JAMENDO_CLIENT_ID", "\"${getSupabaseProperty("JAMENDO_CLIENT_ID")}\"")
         }
         release {
             buildConfigField("String", "SUPABASE_URL", "\"${getSupabaseProperty("SUPABASE_URL")}\"")
             buildConfigField("String", "SUPABASE_KEY", "\"${getSupabaseProperty("SUPABASE_KEY")}\"")
             buildConfigField("String", "PODCAST_INDEX_API_KEY", "\"${getSupabaseProperty("PODCAST_INDEX_API_KEY")}\"")
             buildConfigField("String", "PODCAST_INDEX_SECRET", "\"${getSupabaseProperty("PODCAST_INDEX_SECRET")}\"")
+            buildConfigField("String", "JAMENDO_CLIENT_ID", "\"${getSupabaseProperty("JAMENDO_CLIENT_ID")}\"")
         }
     }
 

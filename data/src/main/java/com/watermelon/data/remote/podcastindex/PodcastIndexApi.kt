@@ -25,4 +25,9 @@ interface PodcastIndexApi {
         @Query("max") max: Int = 20,
         @Query("lang") lang: String? = null
     ): RecentEpisodesResponse
+    @GET("api/1.0/episodes/byterm")
+    suspend fun searchEpisodesByTerm(
+        @Query("q") query: String,
+        @Query("max") max: Int = 20
+    ): EpisodesResponse
 }

@@ -10,7 +10,6 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -18,40 +17,44 @@ import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = WatermelonRed,
-    onPrimary = Color.White,
+    onPrimary = DarkOnBackground,
     primaryContainer = WatermelonRedDark,
-    onPrimaryContainer = Color.White,
-    secondary = FreshGreen,
-    onSecondary = Color.White,
-    secondaryContainer = FreshGreenDark,
-    onSecondaryContainer = Color.White,
+    onPrimaryContainer = DarkOnBackground,
+    secondary = DarkSurfaceVariant,
+    onSecondary = DarkOnBackground,
+    secondaryContainer = Color(0xFF3F3F46),
+    onSecondaryContainer = DarkOnSurface,
     background = DarkBackground,
     onBackground = DarkOnBackground,
     surface = DarkSurface,
-    onSurface = DarkOnSurface,
+    onSurface = DarkOnBackground,
     surfaceVariant = DarkSurfaceVariant,
     onSurfaceVariant = DarkOnSurfaceVariant,
-    error = Color(0xFFCF6679),
-    onError = Color.White
+    error = WatermelonRed,
+    onError = DarkOnBackground,
+    outline = Color(0xFF3F3F46),
+    outlineVariant = DarkSurfaceVariant
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = WatermelonRed,
-    onPrimary = Color.White,
-    primaryContainer = WatermelonRedDark,
-    onPrimaryContainer = Color.White,
-    secondary = FreshGreen,
-    onSecondary = Color.White,
-    secondaryContainer = FreshGreenDark,
-    onSecondaryContainer = Color.White,
+    primary = Color(0xFFDC2626),
+    onPrimary = LightBackground,
+    primaryContainer = WatermelonRedLight,
+    onPrimaryContainer = Color(0xFF7F1D1D),
+    secondary = LightSurfaceVariant,
+    onSecondary = LightOnBackground,
+    secondaryContainer = Color(0xFFE4E4E7),
+    onSecondaryContainer = LightOnSurface,
     background = LightBackground,
     onBackground = LightOnBackground,
     surface = LightSurface,
-    onSurface = LightOnSurface,
+    onSurface = LightOnBackground,
     surfaceVariant = LightSurfaceVariant,
     onSurfaceVariant = LightOnSurfaceVariant,
-    error = Color(0xFFB00020),
-    onError = Color.White
+    error = WatermelonRed,
+    onError = LightBackground,
+    outline = Color(0xFFE4E4E7),
+    outlineVariant = LightSurfaceVariant
 )
 
 @Composable

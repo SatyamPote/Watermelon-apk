@@ -71,7 +71,7 @@ fun PlayerScreen(
 
             Card(
                 modifier = Modifier
-                    .size(280.dp)
+                    .fillMaxWidth(0.7f)
                     .aspectRatio(1f),
                 shape = MaterialTheme.shapes.large,
                 elevation = CardDefaults.cardElevation(8.dp)
@@ -231,6 +231,20 @@ fun PlayerScreen(
                             modifier = Modifier.fillMaxSize()
                         )
                     }
+                }
+            } else {
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Lyrics not available",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    )
                 }
             }
         }

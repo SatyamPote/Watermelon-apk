@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.watermelon.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -71,6 +73,9 @@ class AuthViewModel @Inject constructor(
     fun clearMessage() {
         _uiState.update { it.copy(errorMessage = null, isSuccess = false, resetSent = false) }
     }
+
+    val isAuthenticated: StateFlow<Boolean> = authRepository.isAuthenticated()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 }
 
 data class AuthUiState(

@@ -1,5 +1,7 @@
 package com.watermelon.data.di
 
+import com.watermelon.data.remote.audius.AudiusApi
+import com.watermelon.data.remote.jamendo.JamendoApi
 import com.watermelon.data.remote.lyrics.LyricsApi
 import com.watermelon.data.remote.podcastindex.PodcastIndexApi
 import com.watermelon.data.remote.podcastindex.PodcastIndexAuthInterceptor
@@ -59,6 +61,28 @@ object NetworkModule {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(LyricsApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideJamendoApi(base: OkHttpClient): JamendoApi {
+        return Retrofit.Builder()
+            .baseUrl("https://api.jamendo.com/v3.0/")
+            .client(base)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(JamendoApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAudiusApi(base: OkHttpClient): AudiusApi {
+        return Retrofit.Builder()
+            .baseUrl("https://discoveryprovider.audius.co/v1/")
+            .client(base)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(AudiusApi::class.java)
     }
 }
 

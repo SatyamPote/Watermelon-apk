@@ -3,11 +3,12 @@ package com.watermelon.feature.player
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.watermelon.domain.model.Song
-// import com.watermelon.domain.repository.LyricsRepository
+import com.watermelon.domain.repository.LyricsRepository
 import com.watermelon.domain.repository.StreamingRepository
 import com.watermelon.domain.repository.UrlExtractorRepository
 import com.watermelon.domain.repository.UserActionsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,8 +42,8 @@ data class PlayerUiState(
 class PlayerViewModel @Inject constructor(
     private val streamingRepository: StreamingRepository,
     private val urlExtractor: UrlExtractorRepository,
-    private val userActionsRepository: UserActionsRepository
-//    private val lyricsRepository: LyricsRepository
+    private val userActionsRepository: UserActionsRepository,
+    private val lyricsRepository: LyricsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlayerUiState())
@@ -77,6 +78,17 @@ class PlayerViewModel @Inject constructor(
         override fun onPlaybackError(error: String) {
             _uiState.update {
                 it.copy(isBuffering = false, isPlaying = false, errorMessage = error)
+            }
+            viewModelScope.launch {
+                try {
+                    delay(2000)
+                    _uiState.update { it.copy(errorMessage = null) }
+                    if (hasNextInternal()) {
+                        playNextInternal()
+                    }
+                } catch (_: Exception) {
+                    // Prevent crash from unexpected error during auto-skip
+                }
             }
         }
 
@@ -156,10 +168,10 @@ class PlayerViewModel @Inject constructor(
         loadAndPlay(audioUrl, song.title, song.artistName, song.coverUrl ?: "")
         _uiState.update { it.copy(currentSongId = song.id) }
         updateQueueState()
-        // fetchLyrics(song)
+        fetchLyrics(song)
     }
 
-    /* private fun fetchLyrics(song: Song) {
+    private fun fetchLyrics(song: Song) {
         viewModelScope.launch {
             _uiState.update { it.copy(lyrics = null, isLyricsLoading = true) }
             val result = lyricsRepository.getLyrics(song.artistName, song.title)
@@ -171,7 +183,7 @@ class PlayerViewModel @Inject constructor(
                     _uiState.update { it.copy(lyrics = null, isLyricsLoading = false) }
                 }
         }
-    } */
+    }
 
     fun retryCurrent() {
         if (currentIndex in internalQueue.indices) {

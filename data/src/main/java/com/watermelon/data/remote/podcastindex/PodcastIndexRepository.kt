@@ -27,4 +27,10 @@ class PodcastIndexRepository @Inject constructor(
             api.getEpisodesByFeedId(feedId, max = max).items
         }.getOrDefault(emptyList())
     }
+
+    suspend fun searchEpisodes(query: String): List<PodcastEpisode> {
+        return runCatching {
+            api.searchEpisodesByTerm(query, max = 20).items
+        }.getOrDefault(emptyList())
+    }
 }

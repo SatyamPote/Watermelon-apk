@@ -3,6 +3,12 @@ package com.watermelon.data.repository
 import com.watermelon.data.local.dao.CachedSongDao
 import com.watermelon.data.local.entity.toCachedEntity
 import com.watermelon.data.local.entity.toSong
+import com.watermelon.data.remote.audius.AudiusRepository
+import com.watermelon.data.remote.audius.model.AudiusTrack
+import com.watermelon.data.remote.jamendo.JamendoRepository
+import com.watermelon.data.remote.jamendo.model.JamendoTrack
+import com.watermelon.data.remote.podcastindex.PodcastIndexRepository
+import com.watermelon.data.remote.podcastindex.model.PodcastEpisode
 import com.watermelon.data.remote.youtube.NewPipeInitializer
 import com.watermelon.domain.model.Playlist
 import com.watermelon.domain.model.Song
@@ -19,8 +25,11 @@ import javax.inject.Singleton
 
 @Singleton
 class MusicCatalogRepositoryImpl @Inject constructor(
-    initializer: NewPipeInitializer,
-    private val cachedSongDao: CachedSongDao
+    private val jamendoRepository: JamendoRepository,
+    private val audiusRepository: AudiusRepository,
+    private val podcastIndexRepository: PodcastIndexRepository,
+    private val cachedSongDao: CachedSongDao,
+    initializer: NewPipeInitializer
 ) : MusicCatalogRepository {
 
     private val youtube by lazy { org.schabi.newpipe.extractor.ServiceList.YouTube }
@@ -45,7 +54,17 @@ class MusicCatalogRepositoryImpl @Inject constructor(
         }
 
         val fresh = withContext(Dispatchers.IO) {
-            runCatching { fetchTrendingFromYouTube() }.getOrNull()
+            runCatching { jamendoRepository.getTrendingTracks(limit = 20) }.getOrNull()
+                ?.takeIf { it.isNotEmpty() }
+                ?.map { it.toSong() }
+                ?: runCatching { audiusRepository.getTrendingTracks() }.getOrNull()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.map { it.toSong() }
+                ?: runCatching { podcastIndexRepository.getRecentEpisodes(max = 20) }.getOrNull()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.map { it.toSong() }
+                ?: runCatching { fetchTrendingFromYouTube() }.getOrNull()
+                    ?.takeIf { it.isNotEmpty() }
         }
 
         if (fresh != null) {
@@ -53,7 +72,7 @@ class MusicCatalogRepositoryImpl @Inject constructor(
             cachedSongDao.insertAll(fresh.map { it.toCachedEntity("trending") })
             emit(fresh)
         } else if (cached.isEmpty()) {
-            emit(getFallbackSongs())
+            emit(emptyList())
         }
     }
 
@@ -71,7 +90,17 @@ class MusicCatalogRepositoryImpl @Inject constructor(
         }
 
         val fresh = withContext(Dispatchers.IO) {
-            runCatching { fetchSearchFromYouTube(query) }.getOrNull()
+            runCatching { jamendoRepository.searchTracks(query, limit = 20) }.getOrNull()
+                ?.takeIf { it.isNotEmpty() }
+                ?.map { it.toSong() }
+                ?: runCatching { audiusRepository.searchTracks(query) }.getOrNull()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.map { it.toSong() }
+                ?: runCatching { podcastIndexRepository.searchEpisodes(query) }.getOrNull()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.map { it.toSong() }
+                ?: runCatching { fetchSearchFromYouTube(query) }.getOrNull()
+                    ?.takeIf { it.isNotEmpty() }
         }
 
         if (fresh != null) {
@@ -79,6 +108,60 @@ class MusicCatalogRepositoryImpl @Inject constructor(
             cachedSongDao.insertAll(fresh.map { it.toCachedEntity("search", query) })
             emit(fresh)
         }
+    }
+
+    private fun JamendoTrack.toSong(): Song {
+        return Song(
+            id = id,
+            title = name,
+            artistId = artist_id,
+            artistName = artist_name,
+            albumId = album_id,
+            albumName = album_name,
+            durationMs = duration * 1000L,
+            coverUrl = image.takeIf { it.isNotBlank() } ?: album_image,
+            audioUrl = audio,
+            genre = musicinfo?.tags?.genres?.firstOrNull() ?: "",
+            releaseDate = releasedate
+        )
+    }
+
+    private fun AudiusTrack.toSong(): Song {
+        val artworkUrl = artwork?._480x480?.takeIf { it.isNotBlank() }
+            ?: artwork?._150x150?.takeIf { it.isNotBlank() }
+            ?: ""
+        return Song(
+            id = id,
+            title = title,
+            artistId = user.id,
+            artistName = user.name,
+            albumId = null,
+            albumName = null,
+            durationMs = duration * 1000L,
+            coverUrl = artworkUrl,
+            audioUrl = "https://discoveryprovider.audius.co/v1/tracks/$id/stream",
+            genre = "",
+            releaseDate = ""
+        )
+    }
+
+    private fun PodcastEpisode.toSong(): Song {
+        val thumbUrl = image.takeIf { it.isNotBlank() }
+            ?: feedImage.takeIf { it.isNotBlank() }
+            ?: "https://picsum.photos/seed/${id}/300/300"
+        return Song(
+            id = id.toString(),
+            title = title,
+            artistId = feedId.toString(),
+            artistName = feedTitle,
+            albumId = null,
+            albumName = null,
+            durationMs = if (duration > 0) duration * 1000L else 0L,
+            coverUrl = thumbUrl,
+            audioUrl = enclosureUrl,
+            genre = feedLanguage,
+            releaseDate = ""
+        )
     }
 
     private suspend fun fetchTrendingFromYouTube(): List<Song> = withContext(Dispatchers.IO) {
@@ -103,7 +186,7 @@ class MusicCatalogRepositoryImpl @Inject constructor(
     private fun StreamInfoItem.toSong(): Song {
         val fullUrl = if (url.startsWith("http")) url else "https://www.youtube.com$url"
         val videoId = extractVideoId(fullUrl)
-        val thumbUrl = thumbnails.firstOrNull()?.url?.takeIf { it.isNotBlank() }
+        val thumbUrl = thumbnails.orEmpty().firstOrNull()?.url?.takeIf { it.isNotBlank() }
             ?: "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
         return Song(
             id = videoId,
@@ -127,15 +210,4 @@ class MusicCatalogRepositoryImpl @Inject constructor(
             else -> url.hashCode().toString()
         }
     }
-
-    private fun getFallbackSongs(): List<Song> = listOf(
-        Song("dQw4w9WgXcQ","Never Gonna Give You Up","rick","Rick Astley",null,null,213000L,"https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg","https://www.youtube.com/watch?v=dQw4w9WgXcQ","Pop","1987"),
-        Song("9bZkp7q19f0","Gangnam Style","psy","PSY",null,null,253000L,"https://i.ytimg.com/vi/9bZkp7q19f0/hqdefault.jpg","https://www.youtube.com/watch?v=9bZkp7q19f0","K-Pop","2012"),
-        Song("kJQP7kiw5Fk","Despacito","luis","Luis Fonsi",null,null,229000L,"https://i.ytimg.com/vi/kJQP7kiw5Fk/hqdefault.jpg","https://www.youtube.com/watch?v=kJQP7kiw5Fk","Latin","2017"),
-        Song("JGwWNGJdvx8","Shape of You","ed","Ed Sheeran",null,null,234000L,"https://i.ytimg.com/vi/JGwWNGJdvx8/hqdefault.jpg","https://www.youtube.com/watch?v=JGwWNGJdvx8","Pop","2017"),
-        Song("RgKAFK5djSk","See You Again","wiz","Wiz Khalifa",null,null,230000L,"https://i.ytimg.com/vi/RgKAFK5djSk/hqdefault.jpg","https://www.youtube.com/watch?v=RgKAFK5djSk","Hip-Hop","2015"),
-        Song("OPf0YbXqDm0","Uptown Funk","mark","Mark Ronson",null,null,270000L,"https://i.ytimg.com/vi/OPf0YbXqDm0/hqdefault.jpg","https://www.youtube.com/watch?v=OPf0YbXqDm0","Funk","2014"),
-        Song("CevxZvSJLk8","Roar","katy","Katy Perry",null,null,231000L,"https://i.ytimg.com/vi/CevxZvSJLk8/hqdefault.jpg","https://www.youtube.com/watch?v=CevxZvSJLk8","Pop","2013"),
-        Song("pRpeEdMmmQ0","Waka Waka","shakira","Shakira",null,null,220000L,"https://i.ytimg.com/vi/pRpeEdMmmQ0/hqdefault.jpg","https://www.youtube.com/watch?v=pRpeEdMmmQ0","Pop","2010")
-    )
 }
