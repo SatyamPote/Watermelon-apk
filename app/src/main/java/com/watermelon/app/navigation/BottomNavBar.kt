@@ -7,7 +7,10 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import com.watermelon.core.designsystem.theme.WatermelonRed
 
 sealed class BottomNavItem(
@@ -46,7 +49,7 @@ fun BottomNavBar(
                     Icon(
                         item.icon,
                         contentDescription = item.label,
-                        modifier = androidx.compose.ui.Modifier.size(24.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 },
                 label = { Text(item.label, style = MaterialTheme.typography.labelMedium) },

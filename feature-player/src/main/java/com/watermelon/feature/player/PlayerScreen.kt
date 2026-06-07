@@ -54,7 +54,7 @@ fun PlayerScreen(
         targetValue = if (isPlaying) 1.03f else 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(2000, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
         ),
         label = "artworkPulse"
     )
