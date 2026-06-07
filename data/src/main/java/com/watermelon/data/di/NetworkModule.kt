@@ -1,7 +1,9 @@
 package com.watermelon.data.di
 
+import com.watermelon.data.BuildConfig
 import com.watermelon.data.remote.audius.AudiusApi
 import com.watermelon.data.remote.jamendo.JamendoApi
+import com.watermelon.data.remote.watermelon.WatermelonApi
 import com.watermelon.data.remote.lyrics.LyricsApi
 import com.watermelon.data.remote.podcastindex.PodcastIndexApi
 import com.watermelon.data.remote.podcastindex.PodcastIndexAuthInterceptor
@@ -84,8 +86,39 @@ object NetworkModule {
             .build()
             .create(AudiusApi::class.java)
     }
+
+    @Provides
+    @Singleton
+    @WatermelonClient
+    fun provideWatermelonClient(): OkHttpClient {
+        return OkHttpClient.Builder()
+            .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .addInterceptor(
+                HttpLoggingInterceptor().apply {
+                    level = HttpLoggingInterceptor.Level.BASIC
+                }
+            )
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideWatermelonApi(@WatermelonClient client: OkHttpClient): WatermelonApi {
+        return Retrofit.Builder()
+            .baseUrl(BuildConfig.WATERMELON_API_URL)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(WatermelonApi::class.java)
+    }
 }
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class PodcastIndexClient
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class WatermelonClient

@@ -9,6 +9,7 @@ import com.watermelon.data.remote.jamendo.JamendoRepository
 import com.watermelon.data.remote.jamendo.model.JamendoTrack
 import com.watermelon.data.remote.podcastindex.PodcastIndexRepository
 import com.watermelon.data.remote.podcastindex.model.PodcastEpisode
+import com.watermelon.data.remote.watermelon.WatermelonRepository
 import com.watermelon.data.remote.youtube.NewPipeInitializer
 import com.watermelon.domain.model.Playlist
 import com.watermelon.domain.model.Song
@@ -25,6 +26,7 @@ import javax.inject.Singleton
 
 @Singleton
 class MusicCatalogRepositoryImpl @Inject constructor(
+    private val watermelonRepository: WatermelonRepository,
     private val jamendoRepository: JamendoRepository,
     private val audiusRepository: AudiusRepository,
     private val podcastIndexRepository: PodcastIndexRepository,
@@ -54,24 +56,26 @@ class MusicCatalogRepositoryImpl @Inject constructor(
         }
 
         val fresh = withContext(Dispatchers.IO) {
-            runCatching { jamendoRepository.getTrendingTracks(limit = 20) }.getOrNull()
+            runCatching { fetchTrendingFromYouTube() }.getOrNull()
                 ?.takeIf { it.isNotEmpty() }
-                ?.map { it.toSong() }
+                ?: runCatching { watermelonRepository.search("top hits 2024") }.getOrNull()
+                    ?.takeIf { it.isNotEmpty() }
+                ?: runCatching { jamendoRepository.getTrendingTracks(limit = 20) }.getOrNull()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.map { it.toSong() }
                 ?: runCatching { audiusRepository.getTrendingTracks() }.getOrNull()
                     ?.takeIf { it.isNotEmpty() }
                     ?.map { it.toSong() }
                 ?: runCatching { podcastIndexRepository.getRecentEpisodes(max = 20) }.getOrNull()
                     ?.takeIf { it.isNotEmpty() }
                     ?.map { it.toSong() }
-                ?: runCatching { fetchTrendingFromYouTube() }.getOrNull()
-                    ?.takeIf { it.isNotEmpty() }
         }
 
         if (fresh != null) {
             cachedSongDao.clearTrending()
             cachedSongDao.insertAll(fresh.map { it.toCachedEntity("trending") })
             emit(fresh)
-        } else if (cached.isEmpty()) {
+        } else {
             emit(emptyList())
         }
     }
@@ -90,23 +94,27 @@ class MusicCatalogRepositoryImpl @Inject constructor(
         }
 
         val fresh = withContext(Dispatchers.IO) {
-            runCatching { jamendoRepository.searchTracks(query, limit = 20) }.getOrNull()
+            runCatching { fetchSearchFromYouTube(query) }.getOrNull()
                 ?.takeIf { it.isNotEmpty() }
-                ?.map { it.toSong() }
+                ?: runCatching { watermelonRepository.search(query) }.getOrNull()
+                    ?.takeIf { it.isNotEmpty() }
+                ?: runCatching { jamendoRepository.searchTracks(query, limit = 20) }.getOrNull()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.map { it.toSong() }
                 ?: runCatching { audiusRepository.searchTracks(query) }.getOrNull()
                     ?.takeIf { it.isNotEmpty() }
                     ?.map { it.toSong() }
                 ?: runCatching { podcastIndexRepository.searchEpisodes(query) }.getOrNull()
                     ?.takeIf { it.isNotEmpty() }
                     ?.map { it.toSong() }
-                ?: runCatching { fetchSearchFromYouTube(query) }.getOrNull()
-                    ?.takeIf { it.isNotEmpty() }
         }
 
         if (fresh != null) {
             cachedSongDao.clearSearchResults(query)
             cachedSongDao.insertAll(fresh.map { it.toCachedEntity("search", query) })
             emit(fresh)
+        } else {
+            emit(emptyList())
         }
     }
 

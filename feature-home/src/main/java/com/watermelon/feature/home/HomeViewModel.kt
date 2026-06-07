@@ -2,6 +2,7 @@ package com.watermelon.feature.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.watermelon.data.remote.watermelon.WatermelonRepository
 import com.watermelon.domain.model.Playlist
 import com.watermelon.domain.model.Song
 import com.watermelon.domain.repository.MusicCatalogRepository
@@ -19,14 +20,24 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val musicCatalogRepository: MusicCatalogRepository,
-    private val userActionsRepository: UserActionsRepository
+    private val userActionsRepository: UserActionsRepository,
+    private val watermelonRepository: WatermelonRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
+        warmUpBackend()
         loadHomeData()
+    }
+
+    private fun warmUpBackend() {
+        viewModelScope.launch {
+            // Render cold-start warm-up: ping /health to wake the server
+            // so subsequent /search calls are fast
+            watermelonRepository.ping()
+        }
     }
 
     private fun loadHomeData() {

@@ -57,6 +57,7 @@ class PlayerViewModel @Inject constructor(
     private var currentIndex = -1
     private var isShuffleOn = false
     private var repeatMode = RepeatMode.NONE
+    private var consecutiveErrors = 0
 
     private val listener = object : StreamingRepository.Callback {
         override fun onPlaybackStateChanged(isBuffering: Boolean) {
@@ -64,6 +65,9 @@ class PlayerViewModel @Inject constructor(
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (isPlaying) {
+                consecutiveErrors = 0
+            }
             _uiState.update { it.copy(isPlaying = isPlaying) }
         }
 
@@ -76,6 +80,7 @@ class PlayerViewModel @Inject constructor(
         }
 
         override fun onPlaybackError(error: String) {
+            consecutiveErrors++
             _uiState.update {
                 it.copy(isBuffering = false, isPlaying = false, errorMessage = error)
             }
@@ -83,7 +88,10 @@ class PlayerViewModel @Inject constructor(
                 try {
                     delay(2000)
                     _uiState.update { it.copy(errorMessage = null) }
-                    if (hasNextInternal()) {
+                    if (consecutiveErrors <= 1) {
+                        retryCurrent()
+                    } else if (hasNextInternal()) {
+                        consecutiveErrors = 0
                         playNextInternal()
                     }
                 } catch (_: Exception) {
@@ -138,7 +146,9 @@ class PlayerViewModel @Inject constructor(
             val extractResult = urlExtractor.extractAudioUrl(sourceUrl)
             extractResult
                 .onSuccess { directUrl ->
-                    streamingRepository.play(directUrl, title, artist, artwork)
+                    val cleanUrl = directUrl.replace(Regex("[?&]range=[^&]*"), "")
+                        .replace(Regex("[?&]$"), "")
+                    streamingRepository.play(cleanUrl, title, artist, artwork)
                     _uiState.update {
                         it.copy(
                             currentTitle = title,

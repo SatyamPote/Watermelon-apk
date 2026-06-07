@@ -35,6 +35,7 @@ android {
             buildConfigField("String", "PODCAST_INDEX_API_KEY", "\"${getSupabaseProperty("PODCAST_INDEX_API_KEY")}\"")
             buildConfigField("String", "PODCAST_INDEX_SECRET", "\"${getSupabaseProperty("PODCAST_INDEX_SECRET")}\"")
             buildConfigField("String", "JAMENDO_CLIENT_ID", "\"${getSupabaseProperty("JAMENDO_CLIENT_ID")}\"")
+            buildConfigField("String", "WATERMELON_API_URL", "\"${getSupabaseProperty("WATERMELON_API_URL", "https://watermelon-api-oxx2.onrender.com/")}\"")
         }
         release {
             buildConfigField("String", "SUPABASE_URL", "\"${getSupabaseProperty("SUPABASE_URL")}\"")
@@ -42,6 +43,7 @@ android {
             buildConfigField("String", "PODCAST_INDEX_API_KEY", "\"${getSupabaseProperty("PODCAST_INDEX_API_KEY")}\"")
             buildConfigField("String", "PODCAST_INDEX_SECRET", "\"${getSupabaseProperty("PODCAST_INDEX_SECRET")}\"")
             buildConfigField("String", "JAMENDO_CLIENT_ID", "\"${getSupabaseProperty("JAMENDO_CLIENT_ID")}\"")
+            buildConfigField("String", "WATERMELON_API_URL", "\"${getSupabaseProperty("WATERMELON_API_URL", "https://watermelon-api-oxx2.onrender.com/")}\"")
         }
     }
 

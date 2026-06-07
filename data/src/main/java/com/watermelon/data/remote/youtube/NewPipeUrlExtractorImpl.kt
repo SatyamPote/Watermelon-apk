@@ -1,5 +1,7 @@
 package com.watermelon.data.remote.youtube
 
+import com.watermelon.data.BuildConfig
+import com.watermelon.data.remote.watermelon.WatermelonRepository
 import com.watermelon.domain.repository.UrlExtractorRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,7 +21,8 @@ import javax.inject.Singleton
 @Singleton
 class NewPipeUrlExtractorImpl @Inject constructor(
     initializer: NewPipeInitializer,
-    private val okHttpClient: OkHttpClient
+    private val okHttpClient: OkHttpClient,
+    private val watermelonRepository: WatermelonRepository
 ) : UrlExtractorRepository {
 
     private val youtube by lazy { org.schabi.newpipe.extractor.ServiceList.YouTube }
@@ -42,6 +45,16 @@ class NewPipeUrlExtractorImpl @Inject constructor(
             ?: return@withContext Result.failure(
                 IllegalStateException("Could not extract video ID from $sourceUrl")
             )
+
+        // 0. Backend proxy — pipes audio bytes through Render (no IP lock)
+        runCatching {
+            val proxyUrl = "${BuildConfig.WATERMELON_API_URL}play/$videoId"
+            Timber.i("Audio URL from proxy: $proxyUrl")
+            return@withContext Result.success(proxyUrl)
+        }.onFailure { e ->
+            Timber.e(e, "Proxy URL construction failed")
+            lastException = e
+        }
 
         // 1. Piped proxy (fast, no IP locks)
         runCatching {

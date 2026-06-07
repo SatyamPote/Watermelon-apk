@@ -27,7 +27,14 @@ object MediaModule {
         @ApplicationContext context: Context,
         okHttpClient: OkHttpClient
     ): ExoPlayer {
-        val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
+        // ExoPlayer needs 60s timeout for Render cold starts + yt-dlp extraction
+        val playClient = okHttpClient.newBuilder()
+            .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+
+        val dataSourceFactory = OkHttpDataSource.Factory(playClient)
             .setUserAgent(USER_AGENT)
 
         return ExoPlayer.Builder(context)
