@@ -7,6 +7,7 @@ import com.watermelon.domain.model.Song
 import com.watermelon.domain.repository.MusicCatalogRepository
 import com.watermelon.domain.repository.UserActionsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,10 +33,15 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            val recentlyPlayed = userActionsRepository.getRecentlyPlayed().first()
-            val favorites = userActionsRepository.getFavorites().first()
-            val trending = musicCatalogRepository.getTrendingMusic().first()
-            val playlists = musicCatalogRepository.getRecommendedPlaylists().first()
+            val recentlyPlayedDeferred = async { userActionsRepository.getRecentlyPlayed().first() }
+            val favoritesDeferred = async { userActionsRepository.getFavorites().first() }
+            val trendingDeferred = async { musicCatalogRepository.getTrendingMusic().first() }
+            val playlistsDeferred = async { musicCatalogRepository.getRecommendedPlaylists().first() }
+
+            val recentlyPlayed = recentlyPlayedDeferred.await()
+            val favorites = favoritesDeferred.await()
+            val trending = trendingDeferred.await()
+            val playlists = playlistsDeferred.await()
 
             _uiState.update { state ->
                 state.copy(

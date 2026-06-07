@@ -61,8 +61,7 @@ fun MiniPlayer(
                 },
                 modifier = Modifier.fillMaxWidth(),
                 color = WatermelonRed,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                drawStopIndicator = {}
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
             Row(
                 modifier = Modifier

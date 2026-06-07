@@ -6,8 +6,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -16,15 +18,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 fun Modifier.fadeInAnimation(delayMillis: Int = 0): Modifier = composed {
-    val tween = tween<Float>(durationMillis = 400, delayMillis = delayMillis, easing = EaseOutCubic)
-    animateContentSize()
-    this.alpha(
-        animateFloatAsState(
-            targetValue = 1f,
-            animationSpec = tween,
-            label = "fade"
-        ).value
+    val alpha by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(durationMillis = 400, delayMillis = delayMillis, easing = EaseOutCubic),
+        label = "fade"
     )
+    this.then(Modifier.alpha(alpha))
 }
 
 fun Modifier.shimmerEffect(durationMillis: Int = 1200): Modifier = composed {
@@ -51,7 +50,7 @@ fun Modifier.shimmerEffect(durationMillis: Int = 1200): Modifier = composed {
         end = Offset(x = translateAnim.value, y = translateAnim.value)
     )
 
-    this.background(brush).clip(RoundedCornerShape(8.dp))
+    this.then(Modifier.background(brush).clip(RoundedCornerShape(8.dp)))
 }
 
 @Composable

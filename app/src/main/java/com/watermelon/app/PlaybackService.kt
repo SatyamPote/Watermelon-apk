@@ -34,6 +34,7 @@ class PlaybackService : MediaSessionService() {
             player.clearMediaItems()
         }
         stopSelf()
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {
