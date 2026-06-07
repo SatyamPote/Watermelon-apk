@@ -3,6 +3,7 @@ package com.watermelon.data.remote.watermelon
 import com.watermelon.data.remote.watermelon.model.WatermelonSearchResult
 import com.watermelon.data.remote.watermelon.model.WatermelonSong
 import com.watermelon.domain.model.Song
+import kotlinx.coroutines.CancellationException
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,11 +26,16 @@ class WatermelonRepository @Inject constructor(
 
     suspend fun search(query: String): List<Song> {
         if (query.isBlank()) return emptyList()
-        return runCatching {
+        return try {
             val results = api.search(query).map { it.toSong() }
             Timber.d("Watermelon search returned ${results.size} results")
             results
-        }.onFailure { Timber.e(it, "Watermelon search failed") }.getOrDefault(emptyList())
+        } catch (e: CancellationException) {
+            throw e // Don't catch coroutine cancellation
+        } catch (e: Exception) {
+            Timber.e(e, "Watermelon search failed")
+            emptyList()
+        }
     }
 
     suspend fun getSongInfo(videoId: String): Song? {
