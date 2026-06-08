@@ -43,6 +43,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         Checkout.preload(applicationContext)
+
+        val prefs = getSharedPreferences("watermelon_prefs", MODE_PRIVATE)
+        val hasSeenOnboarding = prefs.getBoolean("has_seen_onboarding", false)
+        val startDestination = if (hasSeenOnboarding) Routes.SPLASH else Routes.ONBOARDING
+
         setContent {
             val context = LocalContext.current
             val mode = remember { ThemeManager.get(context) }
@@ -124,6 +129,10 @@ class MainActivity : ComponentActivity() {
                             navController = navController,
                             playerViewModel = playerViewModel,
                             modifier = Modifier.padding(padding),
+                            startDestination = startDestination,
+                            onOnboardingComplete = {
+                                prefs.edit().putBoolean("has_seen_onboarding", true).apply()
+                            },
                             onStartCheckout = { orderId, amount, label ->
                                 startRazorpayCheckout(orderId, amount, label)
                             }

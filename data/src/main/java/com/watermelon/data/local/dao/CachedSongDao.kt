@@ -30,4 +30,7 @@ interface CachedSongDao {
 
     @Query("DELETE FROM cached_songs WHERE cachedAt < :olderThanMs")
     suspend fun deleteOlderThan(olderThanMs: Long)
+
+    @Query("DELETE FROM cached_songs")
+    suspend fun clearAll()
 }

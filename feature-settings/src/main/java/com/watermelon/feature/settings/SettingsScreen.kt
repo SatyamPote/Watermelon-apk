@@ -1,7 +1,7 @@
 package com.watermelon.feature.settings
 
 import android.app.Activity
-import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -35,6 +35,8 @@ import com.watermelon.core.designsystem.theme.WatermelonRed
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onLogoutComplete: () -> Unit,
+    onNavigateToProfile: () -> Unit = {},
+    onNavigateToAbout: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val user by viewModel.user.collectAsStateWithLifecycle()
@@ -75,7 +77,8 @@ fun SettingsScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .clickable { onNavigateToProfile() },
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
@@ -153,13 +156,20 @@ fun SettingsScreen(
                 icon = Icons.Default.Share,
                 title = "Share App",
                 subtitle = "Invite friends",
-                onClick = { /* TODO: share intent */ }
+                onClick = {
+                    val sendIntent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, "Check out Watermelon - the best free music app! 🍉")
+                    }
+                    context.startActivity(Intent.createChooser(sendIntent, null))
+                }
             )
             SettingsItem(
                 icon = Icons.Default.Info,
                 title = "About",
                 subtitle = "Watermelon v$versionName",
-                onClick = { /* TODO */ }
+                onClick = onNavigateToAbout
             )
 
             Spacer(modifier = Modifier.weight(1f))

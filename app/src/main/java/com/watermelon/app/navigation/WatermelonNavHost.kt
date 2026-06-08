@@ -36,6 +36,7 @@ import com.watermelon.feature.player.QueueScreen
 import com.watermelon.feature.playlist.PlaylistDetailScreen
 import com.watermelon.feature.search.SearchScreen
 import com.watermelon.app.screens.AboutScreen
+import com.watermelon.app.screens.CreatePlaylistScreen
 import com.watermelon.app.screens.OnboardingScreen
 import com.watermelon.app.screens.PremiumScreen
 import com.watermelon.app.screens.ProfileScreen
@@ -49,6 +50,7 @@ fun WatermelonNavHost(
     navController: NavHostController,
     playerViewModel: PlayerViewModel,
     startDestination: String = Routes.SPLASH,
+    onOnboardingComplete: () -> Unit = {},
     onStartCheckout: (orderId: String, amountPaise: Int, planLabel: String) -> Unit = { _, _, _ -> }
 ) {
     NavHost(
@@ -81,6 +83,7 @@ fun WatermelonNavHost(
         composable(Routes.ONBOARDING) {
             OnboardingScreen(
                 onGetStarted = {
+                    onOnboardingComplete()
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.ONBOARDING) { inclusive = true }
                     }
@@ -207,11 +210,22 @@ fun WatermelonNavHost(
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.HOME) { inclusive = true }
                     }
-                }
+                },
+                onNavigateToProfile = { navController.navigate(Routes.PROFILE) },
+                onNavigateToAbout = { navController.navigate(Routes.ABOUT) }
             )
         }
         composable(Routes.ABOUT) {
             AboutScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.CREATE_PLAYLIST) {
+            CreatePlaylistScreen(
+                onBack = { navController.popBackStack() },
+                onCreate = { name, desc ->
+                    // TODO: persist playlist via ViewModel
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }

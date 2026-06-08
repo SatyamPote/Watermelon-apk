@@ -53,6 +53,7 @@ data class RadioStationDto(
     val url: String?,
     val url_resolved: String? = null,
     val homepage: String? = null,
+    val favicon: String? = null,
     val country: String? = null,
     val countrycode: String? = null,
     val language: String? = null,

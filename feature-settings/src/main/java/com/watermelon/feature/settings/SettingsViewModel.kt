@@ -2,9 +2,11 @@ package com.watermelon.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.watermelon.data.local.dao.CachedSongDao
 import com.watermelon.domain.model.User
 import com.watermelon.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +17,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val cachedSongDao: CachedSongDao
 ) : ViewModel() {
 
     val user: StateFlow<User?> = authRepository.getCurrentUser()
@@ -32,8 +35,10 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun clearCache() {
-        _cacheCleared.value = true
-        // TODO: implement actual cache clearing
+        viewModelScope.launch(Dispatchers.IO) {
+            cachedSongDao.clearAll()
+            _cacheCleared.value = true
+        }
     }
 
     fun resetCacheFlag() {
