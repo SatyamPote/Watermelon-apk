@@ -17,7 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.watermelon.core.designsystem.theme.WatermelonRed
 import com.watermelon.data.remote.radio.RadioStationDto
 
@@ -141,10 +141,16 @@ private fun StationCard(
             ) {
                 val imageUrl = station.favicon
                 if (!imageUrl.isNullOrBlank()) {
-                    AsyncImage(
+                    SubcomposeAsyncImage(
                         model = imageUrl,
                         contentDescription = station.name ?: "Station",
                         modifier = Modifier.fillMaxSize(),
+                        loading = {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = WatermelonRed
+                            )
+                        },
                         error = {
                             Icon(
                                 imageVector = Icons.Default.PlayArrow,

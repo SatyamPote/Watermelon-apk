@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,6 +32,7 @@ fun LibraryScreen(
     onBackClick: () -> Unit,
     onPlaylistClick: (Playlist) -> Unit,
     onSongClick: (Song) -> Unit,
+    onCreatePlaylist: () -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
@@ -49,6 +51,20 @@ fun LibraryScreen(
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            if (selectedTab == 0) {
+                FloatingActionButton(
+                    onClick = onCreatePlaylist,
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Create Playlist",
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
         }
     ) { padding ->
         Column(

@@ -84,6 +84,7 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     implementation(libs.bundles.compose)
     implementation(libs.hilt.android)
+    implementation(libs.coil.compose)
     ksp(libs.hilt.compiler)
 
     // Media3 (service declared in Manifest)
