@@ -31,32 +31,45 @@ class MusicCatalogRepositoryImpl @Inject constructor(
     private val audiusRepository: AudiusRepository,
     private val podcastIndexRepository: PodcastIndexRepository,
     private val cachedSongDao: CachedSongDao,
-    initializer: NewPipeInitializer
+    private val initializer: NewPipeInitializer
 ) : MusicCatalogRepository {
 
     private val youtube by lazy { org.schabi.newpipe.extractor.ServiceList.YouTube }
     private val cacheTtlMs = 60 * 60 * 1000L // 1 hour
 
-    // Filter out non-music content (news, politics, etc.)
-    private val newsKeywords = listOf(
-        "breaking news", "news update", "live news", "president", "election",
-        "bbc news", "abc news", "cnn ", "fox news", "press conference",
-        "government", "minister", "senate", "parliament", "inflation", "budget",
-        "weather alert", "emergency", "war update", "official statement",
-        "chief minister", "prime minister", "donald trump", "joe biden"
+    // Block non-music content aggressively (news, gaming, vlogs, tutorials, etc.)
+    private val gamingVlogKeywords = listOf(
+        "gameplay", "let's play", "playthrough", "walkthrough", "gaming",
+        "vlog", "vlogging", "day in my life", "reaction", "reacts to",
+        "unboxing", "review", "tutorial", "how to", "guide", "tips and tricks",
+        "minecraft", "fortnite", "pubg", "call of duty", "gta", "among us",
+        "roblox", "valorant", "apex legends", "cs:go", "counter strike",
+        "live stream", "streaming", "podcast", "podcasts", "talk show",
+        "interview", "interviews", "news", "breaking", "politics",
+        "weather", "sports highlight", "football highlight", "cricket highlight",
+        "movie review", "film review", "trailer", "teaser"
     )
     private val musicKeywords = listOf(
-        "song", " music", "album", "track", "audio", "official video",
+        "song", "music", "album", "track", "audio", "official video",
         "lyrics", "live performance", "concert", "remix", "cover", " ft ", " feat ",
         "music video", "dj ", "mix", "playlist", "single", " ep ", " ost ",
-        "soundtrack", "theme song"
+        "soundtrack", "theme song", "acoustic", "unplugged", "mashup"
     )
-    private fun isMusicContent(title: String): Boolean {
+    private fun isMusicContent(title: String, durationSec: Long = 0): Boolean {
         val lower = title.lowercase()
-        val hasNews = newsKeywords.any { lower.contains(it.lowercase()) }
-        if (!hasNews) return true // No news signals = keep it
-        val hasMusic = musicKeywords.any { lower.contains(it.lowercase()) }
-        return hasMusic // If it has news words BUT also music words, it's probably a song
+        // Strict block: gaming/vlog/news content
+        val hasBlocked = gamingVlogKeywords.any { lower.contains(it.lowercase()) }
+        if (hasBlocked) {
+            // Only allow through if it clearly has music signals too
+            val hasMusic = musicKeywords.any { lower.contains(it.lowercase()) }
+            if (!hasMusic) return false
+        }
+        // Duration heuristic: songs are typically 1-10 minutes
+        if (durationSec > 0) {
+            if (durationSec < 45) return false      // Too short (shorts/reels)
+            if (durationSec > 720) return false     // Too long (podcasts, streams)
+        }
+        return true
     }
 
     private val mockPlaylists = listOf(
@@ -193,22 +206,24 @@ class MusicCatalogRepositoryImpl @Inject constructor(
     }
 
     private suspend fun fetchTrendingFromYouTube(): List<Song> = withContext(Dispatchers.IO) {
+        initializer.ensureInitialized()
         val kioskList = youtube.getKioskList()
         val extractor = kioskList.getDefaultKioskExtractor()
         extractor.fetchPage()
         extractor.initialPage.items
             .filterIsInstance<StreamInfoItem>()
-            .filter { isMusicContent(it.name) }
+            .filter { isMusicContent(it.name, it.duration) }
             .take(20)
             .map { it.toSong() }
     }
 
     private suspend fun fetchSearchFromYouTube(query: String): List<Song> = withContext(Dispatchers.IO) {
-        val extractor = youtube.getSearchExtractor(query)
+        initializer.ensureInitialized()
+        val extractor = youtube.getSearchExtractor("$query song official music")
         extractor.fetchPage()
         extractor.initialPage.items
             .filterIsInstance<StreamInfoItem>()
-            .filter { isMusicContent(it.name) }
+            .filter { isMusicContent(it.name, it.duration) }
             .take(20)
             .map { it.toSong() }
     }

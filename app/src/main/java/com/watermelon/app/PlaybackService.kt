@@ -21,6 +21,16 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         ensureNotificationChannel()
+        // Android 12+ requires startForeground() within 5s of startForegroundService()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notification = androidx.core.app.NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_media_play)
+                .setContentTitle("Watermelon")
+                .setContentText("Ready to play")
+                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
+                .build()
+            startForeground(1, notification)
+        }
         mediaSession = MediaSession.Builder(this, player).build()
     }
 

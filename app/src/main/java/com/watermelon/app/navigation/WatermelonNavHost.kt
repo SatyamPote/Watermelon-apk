@@ -35,6 +35,8 @@ import com.watermelon.feature.player.PlayerViewModel
 import com.watermelon.feature.player.QueueScreen
 import com.watermelon.feature.playlist.PlaylistDetailScreen
 import com.watermelon.feature.search.SearchScreen
+import com.watermelon.app.screens.PremiumScreen
+import com.watermelon.app.screens.RadioScreen
 import com.watermelon.feature.settings.SettingsScreen
 import kotlinx.coroutines.delay
 
@@ -113,6 +115,16 @@ fun WatermelonNavHost(
                     navController.navigate("playlist_detail/${playlist.id}")
                 }
             )
+        }
+        composable(Routes.RADIO) {
+            RadioScreen(
+                onPlayStation = { url, name, country ->
+                    playerViewModel.loadAndPlay(url, name, country, "")
+                }
+            )
+        }
+        composable(Routes.PREMIUM) {
+            PremiumScreen()
         }
         composable(Routes.SEARCH) {
             SearchScreen(

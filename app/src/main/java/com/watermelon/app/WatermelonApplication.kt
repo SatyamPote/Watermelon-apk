@@ -12,25 +12,13 @@ class WatermelonApplication : Application() {
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
-        // Initialize yt-dlp — extracts binary from APK assets.
-        // Wrap in broad catch: if native extraction fails, app must still open.
-        try {
-            YoutubeDL.getInstance().init(this)
-            Timber.i("YoutubeDL initialized")
-
-            // Update yt-dlp binary in background (optional, best-effort)
-            Thread {
-                try {
-                    val status = YoutubeDL.getInstance().updateYoutubeDL(this)
-                    Timber.i("YoutubeDL update status: $status")
-                } catch (e: Exception) {
-                    Timber.e(e, "YoutubeDL update failed")
-                }
-            }.start()
-        } catch (e: Throwable) {
-            // Catch Throwable (includes UnsatisfiedLinkError, native crashes)
-            // so the app UI still opens even if playback extraction is broken.
-            Timber.e(e, "CRITICAL: YoutubeDL init crashed — playback will not work")
-        }
+        // YoutubeDL init off main thread — prevents ANR at startup.
+        Thread {
+            runCatching {
+                YoutubeDL.getInstance().init(this@WatermelonApplication)
+                YoutubeDL.getInstance().updateYoutubeDL(this@WatermelonApplication)
+                Timber.i("YoutubeDL initialized in background")
+            }.onFailure { Timber.e(it, "YoutubeDL init failed") }
+        }.start()
     }
 }

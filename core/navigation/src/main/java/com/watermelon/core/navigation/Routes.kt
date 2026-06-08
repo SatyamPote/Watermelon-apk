@@ -7,6 +7,7 @@ object Routes {
     const val REGISTER = "register"
     const val FORGOT_PASSWORD = "forgot_password"
     const val HOME = "home"
+    const val RADIO = "radio"
     const val SEARCH = "search"
     const val LIBRARY = "library"
     const val PLAYLIST_DETAIL = "playlist_detail/{playlistId}"
@@ -15,6 +16,7 @@ object Routes {
     const val QUEUE = "queue"
     const val DOWNLOADS = "downloads"
     const val PROFILE = "profile"
+    const val PREMIUM = "premium"
     const val SETTINGS = "settings"
     const val ABOUT = "about"
 }

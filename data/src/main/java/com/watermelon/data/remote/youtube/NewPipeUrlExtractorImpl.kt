@@ -20,7 +20,7 @@ import javax.inject.Singleton
 
 @Singleton
 class NewPipeUrlExtractorImpl @Inject constructor(
-    initializer: NewPipeInitializer,
+    private val initializer: NewPipeInitializer,
     private val okHttpClient: OkHttpClient
 ) : UrlExtractorRepository {
 
@@ -52,6 +52,7 @@ class NewPipeUrlExtractorImpl @Inject constructor(
     }
 
     override suspend fun extractAudioUrl(sourceUrl: String): Result<String> = withContext(Dispatchers.IO) {
+        initializer.ensureInitialized()
         var lastException: Throwable? = null
 
         // If it's already a direct audio file (non-YouTube), pass through

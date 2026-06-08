@@ -61,9 +61,8 @@ class MainActivity : ComponentActivity() {
                         if (isPlaying.isPlaying) {
                             activity.startForegroundService(intent)
                         }
-                        // Do NOT stop the service here — killing it when isPlaying
-                        // briefly becomes false causes crashes between songs and
-                        // during buffering. Service stops itself in onTaskRemoved().
+                        // Do NOT stop the service here — stopping it mid-transition
+                        // kills playback between songs. Service stops in onTaskRemoved().
                     }
 
                     val hideMiniPlayerRoutes = setOf(
@@ -77,9 +76,10 @@ class MainActivity : ComponentActivity() {
 
                     val showBottomNav = currentRoute in setOf(
                         Routes.HOME,
+                        Routes.RADIO,
                         Routes.SEARCH,
                         Routes.LIBRARY,
-                        Routes.SETTINGS
+                        Routes.PREMIUM
                     )
 
                     Scaffold(
