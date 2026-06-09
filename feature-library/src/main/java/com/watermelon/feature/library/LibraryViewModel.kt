@@ -46,4 +46,22 @@ class LibraryViewModel @Inject constructor(
     suspend fun createPlaylist(name: String, description: String?) {
         playlistRepository.createPlaylist(name, description, coverUrl = null)
     }
+
+    fun deletePlaylist(playlistId: String) {
+        viewModelScope.launch {
+            playlistRepository.deletePlaylist(playlistId)
+        }
+    }
+
+    fun removeSongFromPlaylist(playlistId: String, songId: String) {
+        viewModelScope.launch {
+            playlistRepository.removeSongFromPlaylist(playlistId, songId)
+        }
+    }
+
+    fun addSongToPlaylist(playlistId: String, song: Song) {
+        viewModelScope.launch {
+            playlistRepository.addSongToPlaylist(playlistId, song)
+        }
+    }
 }

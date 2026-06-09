@@ -40,14 +40,32 @@ import dagger.hilt.android.AndroidEntryPoint
 import com.razorpay.Checkout
 import timber.log.Timber
 
+import android.os.Build
+import android.Manifest
+import androidx.activity.result.contract.ActivityResultContracts
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val premiumViewModel: PremiumViewModel by viewModels()
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Timber.i("Notification permission granted")
+        } else {
+            Timber.w("Notification permission denied — media controls may not appear")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         Checkout.preload(applicationContext)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
 
         val prefs = getSharedPreferences("watermelon_prefs", MODE_PRIVATE)
         val hasSeenOnboarding = prefs.getBoolean("has_seen_onboarding", false)

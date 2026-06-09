@@ -73,7 +73,7 @@ class AuthRepositoryImpl @Inject constructor(
                             ?: supaUser.email?.substringBefore("@")
                             ?: "User",
                         avatarUrl = profile?.avatar_url
-                            ?: "https://api.dicebear.com/10.x/identicon/png?seed=${supaUser.email ?: supaUser.id}",
+                            ?: "https://api.dicebear.com/7.x/identicon/png?seed=${supaUser.email ?: supaUser.id}",
                         plan = runCatching {
                             SubscriptionPlan.valueOf(profile?.plan ?: "FREE")
                         }.getOrDefault(SubscriptionPlan.FREE)
@@ -86,6 +86,10 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun getCurrentUserId(): String? {
         return client.auth.currentUserOrNull()?.id ?: fallbackLocalUser()?.id
+    }
+
+    override suspend fun getCurrentUserEmail(): String? {
+        return client.auth.currentUserOrNull()?.email ?: fallbackLocalUser()?.email
     }
 
     private fun fallbackLocalUser(): User? {

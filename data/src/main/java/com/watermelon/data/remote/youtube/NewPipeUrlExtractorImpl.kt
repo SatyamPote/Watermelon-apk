@@ -18,6 +18,10 @@ import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
 @Singleton
 class NewPipeUrlExtractorImpl @Inject constructor(
     private val initializer: NewPipeInitializer,
@@ -26,14 +30,15 @@ class NewPipeUrlExtractorImpl @Inject constructor(
 
     private val youtube by lazy { org.schabi.newpipe.extractor.ServiceList.YouTube }
     private val json = Json { ignoreUnknownKeys = true }
+    private val extractorMutex = Mutex()
 
     companion object {
         const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36"
     }
 
-    // Simple in-memory cache for extracted stream URLs
-    private val urlCache = mutableMapOf<String, Pair<String, Long>>()
+    // Thread-safe in-memory cache for extracted stream URLs
+    private val urlCache = ConcurrentHashMap<String, Pair<String, Long>>()
     private val CACHE_TTL_MS = 10 * 60 * 1000L // 10 minutes (Google Video URLs expire fast)
 
     private fun getCachedUrl(key: String): String? {
@@ -52,85 +57,89 @@ class NewPipeUrlExtractorImpl @Inject constructor(
     }
 
     override suspend fun extractAudioUrl(sourceUrl: String): Result<String> = withContext(Dispatchers.IO) {
-        initializer.ensureInitialized()
-        var lastException: Throwable? = null
+        extractorMutex.withLock {
+            initializer.ensureInitialized()
+            var lastException: Throwable? = null
 
-        // If it's already a direct audio file (non-YouTube), pass through
-        if (sourceUrl.endsWith(".mp3", ignoreCase = true) ||
-            sourceUrl.endsWith(".m4a", ignoreCase = true) ||
-            sourceUrl.endsWith(".ogg", ignoreCase = true) ||
-            sourceUrl.endsWith(".wav", ignoreCase = true) ||
-            (!sourceUrl.contains("youtube") && !sourceUrl.contains("youtu.be"))
-        ) {
-            return@withContext Result.success(sourceUrl)
-        }
-
-        val videoId = extractVideoId(sourceUrl)
-            ?: return@withContext Result.failure(
-                IllegalStateException("Could not extract video ID from $sourceUrl")
-            )
-
-        // 0. Local yt-dlp (runs on phone, uses real ISP IP, bypasses datacenter blocks)
-        val cached = getCachedUrl(videoId)
-        if (cached != null) {
-            Timber.i("Audio URL from cache: $cached")
-            return@withContext Result.success(cached)
-        }
-        runCatching {
-            val ytDlpUrl = fetchYtDlpAudioUrl(sourceUrl)
-                ?: throw IllegalStateException("yt-dlp returned no audio URL")
-            putCachedUrl(videoId, ytDlpUrl)
-            Timber.i("Audio URL from yt-dlp: $ytDlpUrl")
-            return@withContext Result.success(ytDlpUrl)
-        }.onFailure { e ->
-            Timber.e(e, "yt-dlp failed")
-            lastException = e
-        }
-
-        // 1. NewPipeExtractor (fast, pure Kotlin — often works when yt-dlp is slow)
-        runCatching {
-            val pipedUrl = fetchPipedAudioUrl(videoId)
-                ?: throw IllegalStateException("Piped returned no audio URL")
-            putCachedUrl(videoId, pipedUrl)
-            Timber.i("Audio URL from Piped: $pipedUrl")
-            return@withContext Result.success(pipedUrl)
-        }.onFailure { e ->
-            Timber.e(e, "Piped failed")
-            lastException = e
-        }
-
-        // 3. NewPipeExtractor
-        runCatching {
-            val streamInfo = StreamInfo.getInfo(youtube, sourceUrl)
-            val audioStream = streamInfo.audioStreams
-                .filter { it.isUrl || !it.content.isNullOrBlank() }
-                .maxByOrNull { it.averageBitrate }
-                ?: throw IllegalStateException("No audio stream available")
-
-            val candidate = audioStream.url ?: audioStream.content
-            if (candidate.isNullOrBlank()) {
-                throw IllegalStateException("Empty audio stream")
+            // If it's already a direct audio file (non-YouTube), pass through
+            if (sourceUrl.endsWith(".mp3", ignoreCase = true) ||
+                sourceUrl.endsWith(".m4a", ignoreCase = true) ||
+                sourceUrl.endsWith(".ogg", ignoreCase = true) ||
+                sourceUrl.endsWith(".wav", ignoreCase = true) ||
+                (!sourceUrl.contains("youtube") && !sourceUrl.contains("youtu.be"))
+            ) {
+                return@withLock Result.success(sourceUrl)
             }
-            putCachedUrl(videoId, candidate)
-            return@withContext Result.success(candidate)
-        }.onFailure { e ->
-            Timber.e(e, "NewPipeExtractor failed")
-            lastException = e
-        }
 
-        // 4. Cobalt.tools
-        runCatching {
-            val cobaltUrl = fetchCobaltAudioUrl(sourceUrl)
-                ?: throw IllegalStateException("Cobalt returned no audio URL")
-            putCachedUrl(videoId, cobaltUrl)
-            Timber.i("Audio URL from Cobalt: $cobaltUrl")
-            return@withContext Result.success(cobaltUrl)
-        }.onFailure { e ->
-            Timber.e(e, "Cobalt failed")
-            lastException = e
-        }
+            val videoId = extractVideoId(sourceUrl)
+                ?: return@withLock Result.failure(
+                    IllegalStateException("Could not extract video ID from $sourceUrl")
+                )
 
-        Result.failure(lastException ?: IllegalStateException("Extraction failed after all attempts"))
+            // 0. Local yt-dlp (runs on phone, uses real ISP IP, bypasses datacenter blocks)
+            val cached = getCachedUrl(videoId)
+            if (cached != null) {
+                Timber.i("Audio URL from cache: $cached")
+                return@withLock Result.success(cached)
+            }
+            runCatching {
+                val ytDlpUrl = fetchYtDlpAudioUrl(sourceUrl)
+                    ?: throw IllegalStateException("yt-dlp returned no audio URL")
+                putCachedUrl(videoId, ytDlpUrl)
+                Timber.i("Audio URL from yt-dlp: $ytDlpUrl")
+                return@withLock Result.success(ytDlpUrl)
+            }.onFailure { e ->
+                Timber.e(e, "yt-dlp failed")
+                lastException = e
+            }
+
+            // 1. Piped instances (fast proxy)
+            runCatching {
+                val pipedUrl = fetchPipedAudioUrl(videoId)
+                    ?: throw IllegalStateException("Piped returned no audio URL")
+                putCachedUrl(videoId, pipedUrl)
+                Timber.i("Audio URL from Piped: $pipedUrl")
+                return@withLock Result.success(pipedUrl)
+            }.onFailure { e ->
+                Timber.e(e, "Piped failed")
+                lastException = e
+            }
+
+            // 2. NewPipeExtractor (bitrate-capped to prevent decoder crashes on low-end devices)
+            runCatching {
+                val streamInfo = StreamInfo.getInfo(youtube, sourceUrl)
+                val audioStream = streamInfo.audioStreams
+                    .filter { it.isUrl || !it.content.isNullOrBlank() }
+                    .filter { it.averageBitrate <= 192_000 } // Cap at ~192 kbps
+                    .maxByOrNull { it.averageBitrate }
+                    ?: streamInfo.audioStreams.firstOrNull { it.isUrl || !it.content.isNullOrBlank() }
+                    ?: throw IllegalStateException("No audio stream available")
+
+                val candidate = audioStream.url ?: audioStream.content
+                if (candidate.isNullOrBlank()) {
+                    throw IllegalStateException("Empty audio stream")
+                }
+                putCachedUrl(videoId, candidate)
+                return@withLock Result.success(candidate)
+            }.onFailure { e ->
+                Timber.e(e, "NewPipeExtractor failed")
+                lastException = e
+            }
+
+            // 3. Cobalt.tools
+            runCatching {
+                val cobaltUrl = fetchCobaltAudioUrl(sourceUrl)
+                    ?: throw IllegalStateException("Cobalt returned no audio URL")
+                putCachedUrl(videoId, cobaltUrl)
+                Timber.i("Audio URL from Cobalt: $cobaltUrl")
+                return@withLock Result.success(cobaltUrl)
+            }.onFailure { e ->
+                Timber.e(e, "Cobalt failed")
+                lastException = e
+            }
+
+            Result.failure(lastException ?: IllegalStateException("Extraction failed after all attempts"))
+        }
     }
 
     private val YOUTUBE_VIDEO_ID_REGEX = Regex(
@@ -172,8 +181,12 @@ class NewPipeUrlExtractorImpl @Inject constructor(
 
     private fun fetchYtDlpAudioUrl(sourceUrl: String): String? {
         return try {
+            if (!WatermelonApplication.ytDlpReady) {
+                Timber.w("yt-dlp not initialized yet, skipping")
+                return null
+            }
             val request = YoutubeDLRequest(sourceUrl)
-            request.addOption("-f", "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best")
+            request.addOption("-f", "bestaudio[abr<=192][ext=m4a]/bestaudio[abr<=192][ext=webm]/bestaudio[abr<=192]/bestaudio/best")
             request.addOption("--no-check-certificate")
             request.addOption("--no-warnings")
             request.addOption("--user-agent", USER_AGENT)

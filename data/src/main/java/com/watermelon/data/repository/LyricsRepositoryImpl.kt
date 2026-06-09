@@ -12,11 +12,12 @@ class LyricsRepositoryImpl @Inject constructor(
 
     override suspend fun getLyrics(artist: String, title: String): Result<String> {
         return runCatching {
-            val response = api.getLyrics(artist, title)
-            if (!response.error.isNullOrBlank()) {
-                throw IllegalStateException(response.error)
-            }
-            response.lyrics ?: throw IllegalStateException("No lyrics found")
+            val query = "$artist $title".trim()
+            val results = api.searchLyrics(query)
+            val best = results.firstOrNull { !it.plainLyrics.isNullOrBlank() }
+                ?: results.firstOrNull { !it.syncedLyrics.isNullOrBlank() }
+                ?: throw IllegalStateException("No lyrics found")
+            best.plainLyrics ?: best.syncedLyrics ?: throw IllegalStateException("No lyrics found")
         }
     }
 }

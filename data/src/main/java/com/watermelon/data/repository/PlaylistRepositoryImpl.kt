@@ -73,8 +73,12 @@ class PlaylistRepositoryImpl @Inject constructor(
     override suspend fun addSongToPlaylist(playlistId: String, song: Song): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val position = _playlists.value
-                    .firstOrNull { it.id == playlistId }?.songs?.size ?: 0
+                val playlist = _playlists.value.firstOrNull { it.id == playlistId }
+                    ?: throw IllegalStateException("Playlist not found")
+                if (playlist.songs.any { it.songId == song.id }) {
+                    throw IllegalStateException("Song already in playlist")
+                }
+                val position = playlist.songs.size
                 val row = PlaylistSongRow(
                     playlist_id = playlistId,
                     song_id = song.id,
@@ -160,7 +164,14 @@ class PlaylistRepositoryImpl @Inject constructor(
             coverUrl = cover_url,
             ownerId = user_id,
             songs = songRows.map {
-                PlaylistSong(songId = it.song_id, position = it.position)
+                PlaylistSong(
+                    songId = it.song_id,
+                    position = it.position,
+                    title = it.title ?: "",
+                    artist = it.artist ?: "",
+                    coverUrl = it.cover_url,
+                    audioUrl = it.audio_url
+                )
             },
             createdAt = kotlin.runCatching {
                 java.time.Instant.parse(created_at ?: "")

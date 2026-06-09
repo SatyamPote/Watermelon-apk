@@ -11,4 +11,5 @@ interface AuthRepository {
     fun isAuthenticated(): Flow<Boolean>
     fun getCurrentUser(): Flow<User?>
     suspend fun getCurrentUserId(): String?
+    suspend fun getCurrentUserEmail(): String?
 }

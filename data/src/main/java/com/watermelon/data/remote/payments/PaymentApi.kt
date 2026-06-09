@@ -32,7 +32,10 @@ data class VerifyPaymentRequest(
     val paymentId: String,
     val signature: String,
     val userId: String,
-    val plan: String
+    val email: String,
+    val plan: String,
+    val amount: Int = 0,
+    val currency: String = "INR"
 )
 
 data class VerifyPaymentResponse(

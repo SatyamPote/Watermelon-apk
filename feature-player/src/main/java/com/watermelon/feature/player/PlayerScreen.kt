@@ -26,7 +26,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import kotlinx.coroutines.delay
+import android.app.DownloadManager
+import android.content.Context
+import android.net.Uri
+import android.os.Environment
+import android.widget.Toast
+import androidx.compose.material.icons.filled.Download
+import kotlinx.coroutines.flow.collectLatest
 import com.watermelon.core.designsystem.theme.WatermelonRed
 import com.watermelon.core.designsystem.theme.WatermelonRedDark
 
@@ -43,7 +49,7 @@ fun PlayerScreen(
     val isPlaying = state.isPlaying
     LaunchedEffect(isPlaying) {
         while (isPlaying) {
-            delay(500)
+            delay(1000)
             viewModel.updatePosition()
         }
     }
@@ -58,6 +64,22 @@ fun PlayerScreen(
         ),
         label = "artworkPulse"
     )
+
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.downloadEvent.collectLatest { song ->
+            val url = song.audioUrl ?: return@collectLatest
+            val request = DownloadManager.Request(Uri.parse(url))
+                .setTitle(song.title)
+                .setDescription(song.artistName)
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "Watermelon/${song.id}.mp3")
+            val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            dm.enqueue(request)
+            Toast.makeText(context, "Download started: ${song.title}", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -74,6 +96,13 @@ fun PlayerScreen(
                             imageVector = if (state.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                             contentDescription = if (state.isFavorite) "Unfavorite" else "Favorite",
                             tint = if (state.isFavorite) WatermelonRed else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = { viewModel.startDownload() }) {
+                        Icon(
+                            imageVector = Icons.Filled.Download,
+                            contentDescription = "Download",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     IconButton(onClick = onQueueClick) {

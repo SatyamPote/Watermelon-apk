@@ -53,6 +53,10 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        runCatching {
+            player.stop()
+            player.clearMediaItems()
+        }
         mediaSession?.run {
             release()
         }

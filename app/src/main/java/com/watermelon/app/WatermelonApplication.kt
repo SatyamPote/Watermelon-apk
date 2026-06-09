@@ -20,6 +20,13 @@ import timber.log.Timber
 
 @HiltAndroidApp
 class WatermelonApplication : Application() {
+
+    companion object {
+        @Volatile
+        var ytDlpReady: Boolean = false
+            private set
+    }
+
     override fun onCreate() {
         super.onCreate()
         if (BuildConfig.DEBUG) {
@@ -28,6 +35,17 @@ class WatermelonApplication : Application() {
         Coil.setImageLoader {
             ImageLoader.Builder(this@WatermelonApplication)
                 .crossfade(true)
+                .memoryCache {
+                    coil.memory.MemoryCache.Builder(this@WatermelonApplication)
+                        .maxSizePercent(0.25)
+                        .build()
+                }
+                .diskCache {
+                    coil.disk.DiskCache.Builder()
+                        .directory(cacheDir.resolve("image_cache"))
+                        .maxSizeBytes(128L * 1024 * 1024)
+                        .build()
+                }
                 .build()
         }
         // Firebase init
@@ -41,6 +59,7 @@ class WatermelonApplication : Application() {
             runCatching {
                 YoutubeDL.getInstance().init(this@WatermelonApplication)
                 YoutubeDL.getInstance().updateYoutubeDL(this@WatermelonApplication)
+                ytDlpReady = true
                 Timber.i("YoutubeDL initialized in background")
             }.onFailure { Timber.e(it, "YoutubeDL init failed") }
         }.start()

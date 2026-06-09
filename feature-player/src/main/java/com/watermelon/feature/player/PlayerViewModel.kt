@@ -38,12 +38,19 @@ data class PlayerUiState(
     val isLyricsLoading: Boolean = false
 )
 
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val streamingRepository: StreamingRepository,
     private val urlExtractor: UrlExtractorRepository,
     private val userActionsRepository: UserActionsRepository,
-    private val lyricsRepository: LyricsRepository
+    private val lyricsRepository: LyricsRepository,
+    private val catalogRepository: com.watermelon.domain.repository.MusicCatalogRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlayerUiState())
@@ -52,12 +59,17 @@ class PlayerViewModel @Inject constructor(
     private val _queue = MutableStateFlow<List<Song>>(emptyList())
     val queue: StateFlow<List<Song>> = _queue.asStateFlow()
 
+    private val _downloadEvent = MutableSharedFlow<Song>(extraBufferCapacity = 1)
+    val downloadEvent: SharedFlow<Song> = _downloadEvent.asSharedFlow()
+
     private val internalQueue = mutableListOf<Song>()
     private var originalQueue = listOf<Song>()
     private var currentIndex = -1
     private var isShuffleOn = false
     private var repeatMode = RepeatMode.NONE
     private var consecutiveErrors = 0
+    private var currentExtractionJob: Job? = null
+    private val MAX_CONSECUTIVE_ERRORS = 3
 
     private val listener = object : StreamingRepository.Callback {
         override fun onPlaybackStateChanged(isBuffering: Boolean) {
@@ -84,11 +96,15 @@ class PlayerViewModel @Inject constructor(
             _uiState.update {
                 it.copy(isBuffering = false, isPlaying = false, errorMessage = error)
             }
+            if (consecutiveErrors > MAX_CONSECUTIVE_ERRORS) {
+                Timber.e("Max consecutive errors reached. Stopping auto-retry.")
+                return
+            }
             viewModelScope.launch {
                 try {
                     delay(3000)
                     _uiState.update { it.copy(errorMessage = null) }
-                    if (consecutiveErrors <= 1) {
+                    if (consecutiveErrors <= 2) {
                         // Invalidate cached URL before retry — Google Video URLs expire quickly
                         val currentSong = internalQueue.getOrNull(currentIndex)
                         if (currentSong != null) {
@@ -120,7 +136,13 @@ class PlayerViewModel @Inject constructor(
                         currentIndex = 0
                         playCurrent()
                     } else {
+                        val lastSong = internalQueue.getOrNull(currentIndex)
                         _uiState.update { it.copy(isPlaying = false, positionMs = 0) }
+                        if (lastSong != null) {
+                            viewModelScope.launch {
+                                smartRefillQueue(lastSong)
+                            }
+                        }
                     }
                 }
             }
@@ -148,7 +170,9 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun loadAndPlay(sourceUrl: String, title: String, artist: String, artwork: String, songId: String = "") {
-        viewModelScope.launch {
+        currentExtractionJob?.cancel()
+        consecutiveErrors = 0
+        currentExtractionJob = viewModelScope.launch {
             _uiState.update { it.copy(isBuffering = true, errorMessage = null) }
             runCatching {
                 val extractResult = urlExtractor.extractAudioUrl(sourceUrl)
@@ -342,6 +366,47 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             val favorites = runCatching { userActionsRepository.getFavorites().first() }.getOrDefault(emptyList())
             _uiState.update { it.copy(isFavorite = favorites.any { f -> f.id == song.id }) }
+        }
+    }
+
+    private fun smartRefillQueue(lastSong: Song) {
+        val query = buildString {
+            append(lastSong.artistName)
+            if (!lastSong.genre.isNullOrBlank()) {
+                append(" ${lastSong.genre}")
+            }
+            append(" music")
+        }
+        viewModelScope.launch {
+            runCatching {
+                val similar = catalogRepository.search(query).first()
+                    .filter { it.id != lastSong.id }
+                    .take(5)
+                if (similar.isNotEmpty()) {
+                    originalQueue = similar.toList()
+                    internalQueue.clear()
+                    internalQueue.addAll(similar)
+                    currentIndex = 0
+                    isShuffleOn = false
+                    playCurrent()
+                }
+            }.onFailure { Timber.e(it, "Smart refill failed") }
+        }
+    }
+
+    fun startDownload() {
+        val song = internalQueue.getOrNull(currentIndex) ?: return
+        val sourceUrl = song.audioUrl?.takeIf { it.isNotBlank() }
+            ?: "https://www.youtube.com/watch?v=${song.id}"
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBuffering = true, errorMessage = null) }
+            runCatching {
+                val directUrl = urlExtractor.extractAudioUrl(sourceUrl).getOrThrow()
+                _downloadEvent.emit(song.copy(audioUrl = directUrl))
+            }.onFailure { e ->
+                _uiState.update { it.copy(errorMessage = "Download failed: ${e.message}") }
+            }
+            _uiState.update { it.copy(isBuffering = false) }
         }
     }
 

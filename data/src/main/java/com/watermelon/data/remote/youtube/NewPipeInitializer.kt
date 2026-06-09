@@ -17,7 +17,7 @@ class NewPipeInitializer @Inject constructor(
         if (initialized) return
         synchronized(this) {
             if (initialized) return
-            NewPipe.init(downloader, Localization.DEFAULT, ContentCountry.DEFAULT)
+            NewPipe.init(downloader, Localization.DEFAULT, ContentCountry("US"))
             try {
                 val clazz = Class.forName(
                     "org.schabi.newpipe.extractor.services.youtube.extractors.YoutubeStreamExtractor"

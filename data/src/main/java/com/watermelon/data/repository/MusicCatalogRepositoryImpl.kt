@@ -208,7 +208,12 @@ class MusicCatalogRepositoryImpl @Inject constructor(
         extractorMutex.withLock {
             initializer.ensureInitialized()
             val kioskList = youtube.getKioskList()
-            val extractor = kioskList.getDefaultKioskExtractor()
+            // Try YouTube Music Charts first (music-only), fallback to generic Trending
+            val extractor = try {
+                kioskList.getExtractorById("trending_music", null)
+            } catch (_: Exception) {
+                kioskList.getExtractorById("Trending", null)
+            }
             extractor.fetchPage()
             extractor.initialPage.items
                 .filterIsInstance<StreamInfoItem>()
@@ -221,7 +226,11 @@ class MusicCatalogRepositoryImpl @Inject constructor(
     private suspend fun fetchSearchFromYouTube(query: String): List<Song> = withContext(Dispatchers.IO) {
         extractorMutex.withLock {
             initializer.ensureInitialized()
-            val extractor = youtube.getSearchExtractor("$query song official music")
+            // Use YouTube Music search filter for higher-quality music results
+            val queryHandler = youtube.getSearchQHFactory().fromQuery(
+                query, listOf("music_songs"), ""
+            )
+            val extractor = youtube.getSearchExtractor(queryHandler)
             extractor.fetchPage()
             extractor.initialPage.items
                 .filterIsInstance<StreamInfoItem>()

@@ -248,23 +248,16 @@ private fun CountryDetailContent(
     onToggleFavorite: (RadioStation) -> Unit,
     isFavorite: (RadioStation) -> Boolean
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(country.name) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text(country.name) },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-            )
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
+            }
+        )
+        Box(modifier = Modifier.fillMaxSize()) {
             if (isLoading) {
                 ShimmerList()
             } else if (stations.isEmpty()) {
@@ -418,23 +411,16 @@ private fun LanguageDetailContent(
     onToggleFavorite: (RadioStation) -> Unit,
     isFavorite: (RadioStation) -> Boolean
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(language.replaceFirstChar { it.uppercase() }) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text(language.replaceFirstChar { it.uppercase() }) },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-            )
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
+            }
+        )
+        Box(modifier = Modifier.fillMaxSize()) {
             if (isLoading) {
                 ShimmerList()
             } else if (stations.isEmpty()) {
@@ -582,70 +568,62 @@ private fun StationListItem(
     onToggleFavorite: () -> Unit,
     isFavorite: Boolean
 ) {
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(station.stationuuid) { visible = true }
-
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 5 }
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onPlay),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onPlay),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(2.dp)
+        Row(
+            modifier = Modifier.padding(WatermelonSpacing.md),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.padding(WatermelonSpacing.md),
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val image = station.favicon
-                    if (!image.isNullOrBlank()) {
-                        SubcomposeAsyncImage(
-                            model = image,
-                            contentDescription = station.name,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop,
-                            loading = {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = WatermelonRed)
-                            },
-                            error = {
-                                PlayIcon()
-                            }
-                        )
-                    } else {
-                        PlayIcon()
-                    }
-                }
-                Spacer(modifier = Modifier.width(WatermelonSpacing.md))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = station.name ?: "Unknown Station",
-                        style = MaterialTheme.typography.bodyLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                val image = station.favicon
+                if (!image.isNullOrBlank()) {
+                    SubcomposeAsyncImage(
+                        model = image,
+                        contentDescription = station.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = WatermelonRed)
+                        },
+                        error = {
+                            PlayIcon()
+                        }
                     )
-                    Text(
-                        text = "${station.country ?: "Unknown"} • ${station.bitrate}kbps",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                } else {
+                    PlayIcon()
                 }
-                IconButton(onClick = onToggleFavorite) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                        tint = if (isFavorite) WatermelonRed else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            }
+            Spacer(modifier = Modifier.width(WatermelonSpacing.md))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = station.name ?: "Unknown Station",
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${station.country ?: "Unknown"} • ${station.bitrate}kbps",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onToggleFavorite) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                    tint = if (isFavorite) WatermelonRed else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

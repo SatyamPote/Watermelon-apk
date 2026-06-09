@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.watermelon.core.designsystem.theme.WatermelonRed
 import com.watermelon.domain.model.User
 
@@ -51,20 +52,29 @@ fun ProfileScreen(
         ) {
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Avatar placeholder
+            // Avatar
             Box(
                 modifier = Modifier
                     .size(120.dp)
                     .clip(CircleShape)
-                    .background(WatermelonRed.copy(alpha = 0.15f)),
+                        .background(Color.Black),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Person,
-                    contentDescription = "Avatar",
-                    modifier = Modifier.size(64.dp),
-                    tint = WatermelonRed
-                )
+                val avatar = user?.avatarUrl
+                if (!avatar.isNullOrBlank()) {
+                    AsyncImage(
+                        model = avatar,
+                        contentDescription = "Avatar",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = "Avatar",
+                        modifier = Modifier.size(64.dp),
+                        tint = WatermelonRed
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

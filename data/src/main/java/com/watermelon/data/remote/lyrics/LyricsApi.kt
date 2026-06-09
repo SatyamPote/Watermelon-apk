@@ -1,18 +1,24 @@
 package com.watermelon.data.remote.lyrics
 
 import retrofit2.http.GET
-import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface LyricsApi {
 
-    @GET("v1/{artist}/{title}")
-    suspend fun getLyrics(
-        @Path("artist") artist: String,
-        @Path("title") title: String
-    ): LyricsResponse
+    @GET("api/search")
+    suspend fun searchLyrics(
+        @Query("q") query: String
+    ): List<LrclibResult>
 }
 
-data class LyricsResponse(
-    val lyrics: String?,
-    val error: String?
+data class LrclibResult(
+    val id: Int,
+    val name: String?,
+    val trackName: String?,
+    val artistName: String?,
+    val albumName: String?,
+    val duration: Double?,
+    val instrumental: Boolean?,
+    val plainLyrics: String?,
+    val syncedLyrics: String?
 )

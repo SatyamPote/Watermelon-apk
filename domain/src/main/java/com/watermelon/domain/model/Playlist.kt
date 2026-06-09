@@ -21,5 +21,9 @@ data class Playlist(
 @Parcelize
 data class PlaylistSong(
     val songId: String,
-    val position: Int
+    val position: Int,
+    val title: String = "",
+    val artist: String = "",
+    val coverUrl: String? = null,
+    val audioUrl: String? = null
 ) : Parcelable

@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,6 +45,8 @@ fun LibraryScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var showPaywall by remember { mutableStateOf(false) }
     val tabs = listOf("Playlists", "Favorites", "Feed")
+
+    var showDeleteDialog by remember { mutableStateOf<Playlist?>(null) }
 
     Scaffold(
         topBar = {
@@ -92,6 +95,7 @@ fun LibraryScreen(
                 0 -> PlaylistList(
                     playlists = playlists,
                     onPlaylistClick = onPlaylistClick,
+                    onDeletePlaylist = { showDeleteDialog = it },
                     modifier = Modifier.fillMaxSize()
                 )
                 1 -> SongList(

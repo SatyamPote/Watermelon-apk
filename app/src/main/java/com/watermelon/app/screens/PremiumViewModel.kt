@@ -39,11 +39,11 @@ class PremiumViewModel @Inject constructor(
     val pendingPlan: String get() = _pendingPlan
 
     init {
-        checkPremiumStatus()
-    }
-
-    private fun checkPremiumStatus() {
-        _isPremium.value = false
+        viewModelScope.launch {
+            authRepository.getCurrentUser().collect { user ->
+                _isPremium.value = user?.plan != null && user.plan != com.watermelon.domain.model.SubscriptionPlan.FREE
+            }
+        }
     }
 
     fun createOrder(plan: String, amount: Int, onOrderCreated: (String) -> Unit) {
@@ -80,12 +80,14 @@ class PremiumViewModel @Inject constructor(
             _isLoading.value = true
             try {
                 val userId = authRepository.getCurrentUserId() ?: "anonymous"
+                val email = authRepository.getCurrentUserEmail() ?: ""
                 val response = paymentApi.verifyPayment(
                     VerifyPaymentRequest(
                         orderId = orderId,
                         paymentId = paymentId,
                         signature = signature,
                         userId = userId,
+                        email = email,
                         plan = _pendingPlan
                     )
                 )

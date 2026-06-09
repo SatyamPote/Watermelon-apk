@@ -199,12 +199,6 @@ fun SettingsScreen(
                 onClick = { showThemeDialog = true }
             )
             SettingsItem(
-                icon = Icons.Default.CleaningServices,
-                title = "Clear Cache",
-                subtitle = "Free up local storage",
-                onClick = { viewModel.clearCache() }
-            )
-            SettingsItem(
                 icon = Icons.Default.Share,
                 title = "Share App",
                 subtitle = "Invite friends",

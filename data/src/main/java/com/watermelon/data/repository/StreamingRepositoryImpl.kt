@@ -9,12 +9,14 @@ import com.watermelon.domain.repository.StreamingRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 
+import java.util.concurrent.CopyOnWriteArrayList
+
 @Singleton
 class StreamingRepositoryImpl @Inject constructor(
     private val player: ExoPlayer
 ) : StreamingRepository {
 
-    private val listeners = mutableListOf<StreamingRepository.Callback>()
+    private val listeners = CopyOnWriteArrayList<StreamingRepository.Callback>()
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
             val isBuffering = playbackState == Player.STATE_BUFFERING
@@ -64,6 +66,10 @@ class StreamingRepositoryImpl @Inject constructor(
             .setMediaMetadata(metadata)
             .build()
 
+        runCatching {
+            player.stop()
+            player.clearMediaItems()
+        }
         player.setMediaItem(mediaItem)
         player.prepare()
         player.play()

@@ -58,7 +58,7 @@ object NetworkModule {
     @Singleton
     fun provideLyricsApi(base: OkHttpClient): LyricsApi {
         return Retrofit.Builder()
-            .baseUrl("https://api.lyrics.ovh/")
+            .baseUrl("https://lrclib.net/")
             .client(base)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
