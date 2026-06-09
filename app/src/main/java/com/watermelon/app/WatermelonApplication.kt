@@ -1,6 +1,8 @@
 package com.watermelon.app
 
 import android.app.Application
+import coil.Coil
+import coil.ImageLoader
 import com.yausername.youtubedl_android.YoutubeDL
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
@@ -11,6 +13,11 @@ class WatermelonApplication : Application() {
         super.onCreate()
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
+        }
+        Coil.setImageLoader {
+            ImageLoader.Builder(this@WatermelonApplication)
+                .crossfade(true)
+                .build()
         }
         // YoutubeDL init off main thread — prevents ANR at startup.
         Thread {

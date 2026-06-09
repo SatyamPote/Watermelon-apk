@@ -2,9 +2,11 @@ package com.watermelon.app
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import androidx.core.app.TaskStackBuilder
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
@@ -21,17 +23,20 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         ensureNotificationChannel()
-        // Android 12+ requires startForeground() within 5s of startForegroundService()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val notification = androidx.core.app.NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_media_play)
-                .setContentTitle("Watermelon")
-                .setContentText("Ready to play")
-                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
-                .build()
-            startForeground(1, notification)
-        }
-        mediaSession = MediaSession.Builder(this, player).build()
+
+        val sessionActivityPendingIntent = TaskStackBuilder.create(this).run {
+            addNextIntent(Intent(this@PlaybackService, MainActivity::class.java))
+            getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        } ?: PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
+        mediaSession = MediaSession.Builder(this, player)
+            .setSessionActivity(sessionActivityPendingIntent)
+            .build()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
@@ -48,7 +53,10 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
-        mediaSession?.release()
+        mediaSession?.run {
+            player.release()
+            release()
+        }
         mediaSession = null
         super.onDestroy()
     }

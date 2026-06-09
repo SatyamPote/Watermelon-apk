@@ -1,5 +1,10 @@
 package com.watermelon.app.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,14 +20,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.watermelon.app.R
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.watermelon.app.R
+import androidx.navigation.NavGraphBuilder
 import com.watermelon.core.navigation.Routes
-import com.watermelon.data.remote.radio.RadioStationDto
+import com.watermelon.domain.model.RadioStation
 import com.watermelon.domain.model.Song
 import com.watermelon.feature.auth.AuthViewModel
 import com.watermelon.feature.auth.ForgotPasswordScreen
@@ -57,7 +63,11 @@ fun WatermelonNavHost(
     NavHost(
         navController = navController,
         startDestination = startDestination,
-        modifier = modifier
+        modifier = modifier,
+        enterTransition = { slideInHorizontally(tween(300)) { it / 4 } + fadeIn(tween(300)) },
+        exitTransition = { slideOutHorizontally(tween(300)) { -it / 4 } + fadeOut(tween(300)) },
+        popEnterTransition = { slideInHorizontally(tween(300)) { -it / 4 } + fadeIn(tween(300)) },
+        popExitTransition = { slideOutHorizontally(tween(300)) { it / 4 } + fadeOut(tween(300)) }
     ) {
         composable(Routes.SPLASH) {
             val authViewModel: AuthViewModel = hiltViewModel()
@@ -129,7 +139,7 @@ fun WatermelonNavHost(
         }
         composable(Routes.RADIO) {
             RadioScreen(
-                onPlayStation = { station: RadioStationDto ->
+                onPlayStation = { station: RadioStation ->
                     playerViewModel.loadAndPlay(
                         station.url ?: "",
                         station.name ?: "Unknown Station",

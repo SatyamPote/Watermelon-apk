@@ -16,6 +16,7 @@ interface RadioBrowserApi {
 
     @GET("json/stations/search")
     suspend fun searchStations(
+        @Query("name") name: String? = null,
         @Query("tag") tag: String? = null,
         @Query("language") language: String? = null,
         @Query("country") country: String? = null,
@@ -49,6 +50,7 @@ data class RadioLanguage(
 )
 
 data class RadioStationDto(
+    val stationuuid: String? = null,
     val name: String?,
     val url: String?,
     val url_resolved: String? = null,

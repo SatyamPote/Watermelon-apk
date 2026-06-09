@@ -5,6 +5,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -68,14 +73,12 @@ class MainActivity : ComponentActivity() {
                     val currentBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentRoute = currentBackStackEntry?.destination?.route
 
-                    val isPlaying by playerViewModel.uiState.collectAsState()
-                    LaunchedEffect(isPlaying.isPlaying) {
+                    val playerState by playerViewModel.uiState.collectAsState()
+                    LaunchedEffect(playerState.isPlaying) {
                         val intent = Intent(activity, PlaybackService::class.java)
-                        if (isPlaying.isPlaying) {
+                        if (playerState.isPlaying) {
                             activity.startForegroundService(intent)
                         }
-                        // Do NOT stop the service here — stopping it mid-transition
-                        // kills playback between songs. Service stops in onTaskRemoved().
                     }
 
                     val hideMiniPlayerRoutes = setOf(
@@ -99,7 +102,11 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         bottomBar = {
                             Column {
-                                if (currentRoute !in hideMiniPlayerRoutes) {
+                                AnimatedVisibility(
+                                    visible = currentRoute !in hideMiniPlayerRoutes && playerState.currentTitle.isNotBlank(),
+                                    enter = slideInVertically { it } + fadeIn(),
+                                    exit = slideOutVertically { it } + fadeOut()
+                                ) {
                                     MiniPlayer(
                                         modifier = Modifier,
                                         onClick = { navController.navigate(Routes.PLAYER) },
@@ -167,7 +174,6 @@ class MainActivity : ComponentActivity() {
                     val errorCode = data.getStringExtra("error_code") ?: "0"
                     val errorMsg = data.getStringExtra("error_description") ?: "Payment error"
                     Timber.e("Razorpay error: $errorCode - $errorMsg")
-                    // TODO: forward error
                 }
             }
         }

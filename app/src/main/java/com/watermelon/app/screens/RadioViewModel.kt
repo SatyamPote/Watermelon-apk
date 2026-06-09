@@ -3,147 +3,210 @@ package com.watermelon.app.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.watermelon.data.remote.radio.RadioBrowserApi
-import com.watermelon.data.remote.radio.RadioStationDto
+import com.watermelon.data.remote.radio.toDomain
+import com.watermelon.domain.model.RadioCountry
+import com.watermelon.domain.model.RadioLanguage
+import com.watermelon.domain.model.RadioStation
+import com.watermelon.domain.repository.RadioStationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
+enum class RadioTab(val label: String) {
+    BROWSE("Browse"),
+    LANGUAGES("Languages"),
+    SEARCH("Search"),
+    FAVORITES("Favorites"),
+    RECENT("Recent")
+}
+
+data class RadioUiState(
+    val selectedTab: RadioTab = RadioTab.BROWSE,
+    val isLoading: Boolean = false,
+    val error: String? = null,
+
+    // Browse
+    val countries: List<RadioCountry> = emptyList(),
+    val selectedCountry: RadioCountry? = null,
+    val countryStations: List<RadioStation> = emptyList(),
+
+    // Languages
+    val languages: List<RadioLanguage> = emptyList(),
+    val selectedLanguage: String? = null,
+    val languageStations: List<RadioStation> = emptyList(),
+
+    // Search
+    val searchQuery: String = "",
+    val searchResults: List<RadioStation> = emptyList(),
+    val isSearching: Boolean = false,
+
+    // Local
+    val favoriteStations: List<RadioStation> = emptyList(),
+    val recentStations: List<RadioStation> = emptyList()
+)
+
 @HiltViewModel
 class RadioViewModel @Inject constructor(
-    private val api: RadioBrowserApi
+    private val api: RadioBrowserApi,
+    private val radioStationRepository: RadioStationRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RadioUiState())
     val uiState: StateFlow<RadioUiState> = _uiState.asStateFlow()
 
-    private val musicCategories = listOf(
-        "pop", "rock", "jazz", "classical", "hiphop", "electronic", "bollywood"
-    )
+    private var searchJob: Job? = null
 
     init {
-        loadCategories()
+        loadCountries()
+        loadLanguages()
+        observeLocalStations()
     }
 
-    private fun loadCategories() {
+    private fun observeLocalStations() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-
-            val categoryList = musicCategories.map { tag ->
-                async {
-                    try {
-                        val stations = api.getStationsByTag(tag, limit = 50)
-                            .filter { !it.url.isNullOrBlank() }
-                            .sortedWith(
-                                compareByDescending<RadioStationDto> { it.votes }
-                                    .thenByDescending { it.bitrate }
-                            )
-                            .distinctBy { it.name }
-                            .take(30)
-
-                        val languages = stations.mapNotNull { it.language }
-                            .flatMap { it.split(",").map { l -> l.trim() } }
-                            .filter { it.isNotBlank() }
-                            .distinct()
-                            .sorted()
-
-                        RadioCategory(
-                            name = tag.replaceFirstChar { it.uppercase() },
-                            tag = tag,
-                            languages = languages,
-                            stations = stations
-                        )
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to load $tag stations")
-                        RadioCategory(
-                            name = tag.replaceFirstChar { it.uppercase() },
-                            tag = tag,
-                            languages = emptyList(),
-                            stations = fallbackStations(tag)
-                        )
-                    }
-                }
-            }.awaitAll()
-
-            _uiState.value = RadioUiState(
-                categories = categoryList,
-                isLoading = false
-            )
+            radioStationRepository.getFavoriteStations().collect { favorites ->
+                _uiState.update { it.copy(favoriteStations = favorites) }
+            }
+        }
+        viewModelScope.launch {
+            radioStationRepository.getRecentStations().collect { recent ->
+                _uiState.update { it.copy(recentStations = recent) }
+            }
         }
     }
 
-    fun selectCategory(category: RadioCategory) {
-        _uiState.value = _uiState.value.copy(
-            selectedCategory = category,
-            selectedLanguage = category.languages.firstOrNull()
-        )
+    fun selectTab(tab: RadioTab) {
+        _uiState.update { it.copy(selectedTab = tab) }
+    }
+
+    private fun loadCountries() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val countries = api.getCountries()
+                    .filter { it.name.isNotBlank() }
+                    .sortedByDescending { it.stationcount }
+                    .map { it.toDomain() }
+                _uiState.update { it.copy(countries = countries, isLoading = false) }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to load countries")
+                _uiState.update { it.copy(isLoading = false, error = "Failed to load countries") }
+            }
+        }
+    }
+
+    fun selectCountry(country: RadioCountry) {
+        _uiState.update { it.copy(selectedCountry = country, isLoading = true, countryStations = emptyList()) }
+        viewModelScope.launch {
+            try {
+                val stations = api.searchStations(country = country.name, limit = 100)
+                    .filter { !it.url.isNullOrBlank() }
+                    .sortedWith(compareByDescending<com.watermelon.data.remote.radio.RadioStationDto> { it.votes }.thenByDescending { it.bitrate })
+                    .map { it.toDomain() }
+                _uiState.update { it.copy(countryStations = stations, isLoading = false) }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to load stations for ${country.name}")
+                _uiState.update { it.copy(isLoading = false, error = "Failed to load stations") }
+            }
+        }
+    }
+
+    fun clearCountry() {
+        _uiState.update { it.copy(selectedCountry = null, countryStations = emptyList()) }
+    }
+
+    private fun loadLanguages() {
+        viewModelScope.launch {
+            try {
+                val languages = api.getLanguages()
+                    .filter { it.name.isNotBlank() }
+                    .sortedByDescending { it.stationcount }
+                    .map { it.toDomain() }
+                _uiState.update { it.copy(languages = languages) }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to load languages")
+            }
+        }
     }
 
     fun selectLanguage(language: String) {
-        _uiState.value = _uiState.value.copy(selectedLanguage = language)
-    }
-
-    fun clearSelection() {
-        _uiState.value = _uiState.value.copy(
-            selectedCategory = null,
-            selectedLanguage = null
-        )
-    }
-
-    private fun fallbackStations(tag: String): List<RadioStationDto> {
-        return when (tag.lowercase()) {
-            "pop" -> listOf(
-                RadioStationDto("BBC Radio 1", "http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one", country = "United Kingdom", bitrate = 128, tags = "pop", votes = 5000),
-                RadioStationDto("Capital FM", "https://media-ssl.musicradio.com/Capital", country = "United Kingdom", bitrate = 128, tags = "pop", votes = 4000),
-                RadioStationDto("Radio Mirchi", "https://mirchitap.akamaized.net/mirchitap_mp3", country = "India", bitrate = 64, tags = "pop,bollywood", votes = 3000),
-                RadioStationDto("Hit Radio FFH", "https://mp3.ffh.de/radioffh/hqlivestream.mp3", country = "Germany", bitrate = 128, tags = "pop", votes = 2000)
-            )
-            "rock" -> listOf(
-                RadioStationDto("Classic Rock Florida", "https://listen.181fm.com/181-classicrock_128k.mp3", country = "United States", bitrate = 128, tags = "rock", votes = 3500),
-                RadioStationDto("Radio BOB", "https://streams.radiobob.de/bob-national/mp3-192/streams.radiobob.de/", country = "Germany", bitrate = 192, tags = "rock", votes = 3000),
-                RadioStationDto("Rock Antenne", "https://stream.rockantenne.de/rockantenne/stream/mp3", country = "Germany", bitrate = 128, tags = "rock", votes = 2500)
-            )
-            "jazz" -> listOf(
-                RadioStationDto("Jazz24", "https://live.wostreaming.net/direct/ppm-jazz24mp3-ibc1", country = "United States", bitrate = 128, tags = "jazz", votes = 2000),
-                RadioStationDto("Radio Swiss Jazz", "http://stream.srg-ssr.ch/m/rsj/mp3_128", country = "Switzerland", bitrate = 128, tags = "jazz", votes = 1800)
-            )
-            "classical" -> listOf(
-                RadioStationDto("Classic FM", "https://media-ssl.musicradio.com/ClassicFM", country = "United Kingdom", bitrate = 128, tags = "classical", votes = 4000),
-                RadioStationDto("ABC Classic", "http://live-radio01.mediahubaustralia.com/CLASIC/mp3/", country = "Australia", bitrate = 128, tags = "classical", votes = 1500)
-            )
-            "bollywood" -> listOf(
-                RadioStationDto("Radio Mirchi Bollywood", "https://mirchitap.akamaized.net/mirchitap_mp3", country = "India", bitrate = 64, tags = "bollywood", votes = 5000),
-                RadioStationDto("Bollywood Radio", "https://stream.zeno.fm/rm4i9pdpxrquv", country = "India", bitrate = 128, tags = "bollywood", votes = 3000)
-            )
-            "hiphop" -> listOf(
-                RadioStationDto("Hot 97", "https://playerservices.streamtheworld.com/api/livestream-redirect/WQHTFM.mp3", country = "United States", bitrate = 128, tags = "hiphop", votes = 3500),
-                RadioStationDto("BBC 1Xtra", "http://stream.live.vc.bbcmedia.co.uk/bbc_1xtra", country = "United Kingdom", bitrate = 128, tags = "hiphop", votes = 2500)
-            )
-            "electronic" -> listOf(
-                RadioStationDto("DI.FM Vocal Trance", "https://prem4.di.fm/vocaltrance_hi?", country = "United States", bitrate = 256, tags = "electronic", votes = 3000),
-                RadioStationDto("Techno Club Radio", "https://stream.laut.fm/techno-club-radio", country = "Germany", bitrate = 128, tags = "electronic", votes = 2000)
-            )
-            else -> emptyList()
+        _uiState.update { it.copy(selectedLanguage = language, isLoading = true, languageStations = emptyList()) }
+        viewModelScope.launch {
+            try {
+                val stations = api.searchStations(language = language, limit = 100)
+                    .filter { !it.url.isNullOrBlank() }
+                    .sortedWith(compareByDescending<com.watermelon.data.remote.radio.RadioStationDto> { it.votes }.thenByDescending { it.bitrate })
+                    .map { it.toDomain() }
+                _uiState.update { it.copy(languageStations = stations, isLoading = false) }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to load stations for language $language")
+                _uiState.update { it.copy(isLoading = false, error = "Failed to load stations") }
+            }
         }
     }
+
+    fun clearLanguage() {
+        _uiState.update { it.copy(selectedLanguage = null, languageStations = emptyList()) }
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+        searchJob?.cancel()
+        if (query.isBlank()) {
+            _uiState.update { it.copy(searchResults = emptyList(), isSearching = false) }
+            return
+        }
+        searchJob = viewModelScope.launch {
+            delay(400)
+            _uiState.update { it.copy(isSearching = true) }
+            try {
+                val results = api.searchStations(name = query, limit = 50)
+                    .filter { !it.url.isNullOrBlank() }
+                    .sortedWith(compareByDescending<com.watermelon.data.remote.radio.RadioStationDto> { it.votes }.thenByDescending { it.bitrate })
+                    .map { it.toDomain() }
+                _uiState.update { it.copy(searchResults = results, isSearching = false) }
+            } catch (e: Exception) {
+                Timber.e(e, "Search failed")
+                _uiState.update { it.copy(searchResults = emptyList(), isSearching = false) }
+            }
+        }
+    }
+
+    fun toggleFavorite(station: RadioStation) {
+        viewModelScope.launch {
+            val uuid = station.stationuuid ?: "${station.name}_${station.url}"
+            val isFav = _uiState.value.favoriteStations.any {
+                (it.stationuuid ?: "${it.name}_${it.url}") == uuid
+            }
+            if (isFav) {
+                radioStationRepository.removeFavorite(uuid)
+            } else {
+                radioStationRepository.addFavorite(station)
+            }
+        }
+    }
+
+    fun isFavorite(station: RadioStation): Boolean {
+        val uuid = station.stationuuid ?: "${station.name}_${station.url}"
+        return _uiState.value.favoriteStations.any {
+            (it.stationuuid ?: "${it.name}_${it.url}") == uuid
+        }
+    }
+
+    fun recordRecentlyPlayed(station: RadioStation) {
+        viewModelScope.launch {
+            radioStationRepository.recordRecentlyPlayed(station)
+        }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
 }
-
-data class RadioUiState(
-    val categories: List<RadioCategory> = emptyList(),
-    val selectedCategory: RadioCategory? = null,
-    val selectedLanguage: String? = null,
-    val isLoading: Boolean = false,
-    val error: String? = null
-)
-
-data class RadioCategory(
-    val name: String,
-    val tag: String,
-    val languages: List<String>,
-    val stations: List<RadioStationDto>
-)

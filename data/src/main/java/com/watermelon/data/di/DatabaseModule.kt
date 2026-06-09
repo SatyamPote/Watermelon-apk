@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.watermelon.data.local.AppDatabase
 import com.watermelon.data.local.dao.CachedSongDao
+import com.watermelon.data.local.dao.RadioStationDao
 import com.watermelon.data.local.dao.UserActionDao
 import dagger.Module
 import dagger.Provides
@@ -31,4 +32,7 @@ object DatabaseModule {
 
     @Provides
     fun provideUserActionDao(db: AppDatabase): UserActionDao = db.userActionDao()
+
+    @Provides
+    fun provideRadioStationDao(db: AppDatabase): RadioStationDao = db.radioStationDao()
 }
