@@ -31,6 +31,9 @@ interface UserActionDao {
     @Query("DELETE FROM user_actions WHERE actionType = 'recent' AND id NOT IN (SELECT id FROM user_actions WHERE actionType = 'recent' ORDER BY timestamp DESC LIMIT :limit)")
     suspend fun trimRecentTo(limit: Int)
 
+    @Query("DELETE FROM user_actions WHERE actionType = 'favorite'")
+    suspend fun clearFavorites()
+
     @Query("UPDATE user_actions SET syncedToServer = 1 WHERE id = :id")
     suspend fun markSynced(id: Long)
 

@@ -12,8 +12,7 @@ import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.time.Instant
@@ -26,26 +25,11 @@ class UserActionsRepositoryImpl @Inject constructor(
     private val client: SupabaseClient
 ) : UserActionsRepository {
 
-    override fun getRecentlyPlayed(): Flow<List<Song>> = flow {
-        // Always emit local first for speed
-        emit(userActionDao.getRecentlyPlayed().map { it.toSong() })
-        val userId = getUserId()
-        if (userId != null) {
-            // Optionally pull remote history if you want cross-device sync.
-            // For now, remote history is analytics-only; local is the source of truth for UI.
-        }
-    }.flowOn(Dispatchers.IO)
+    override fun getRecentlyPlayed(): Flow<List<Song>> =
+        userActionDao.getRecentlyPlayed().map { list -> list.map { it.toSong() } }
 
-    override fun getFavorites(): Flow<List<Song>> = flow {
-        val local = userActionDao.getFavorites().map { it.toSong() }
-        emit(local)
-        val remote = runCatching { fetchRemoteFavorites() }.getOrDefault(emptyList())
-        if (remote.isNotEmpty()) {
-            emit(remote)
-            // Sync local cache to match remote
-            syncLocalFavorites(remote)
-        }
-    }.flowOn(Dispatchers.IO)
+    override fun getFavorites(): Flow<List<Song>> =
+        userActionDao.getFavorites().map { list -> list.map { it.toSong() } }
 
     override suspend fun addToFavorites(song: Song): Result<Unit> = runCatching {
         userActionDao.insert(

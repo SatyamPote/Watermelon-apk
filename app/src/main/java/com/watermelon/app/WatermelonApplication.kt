@@ -32,7 +32,7 @@ class WatermelonApplication : Application() {
         }
         // Firebase init
         FirebaseApp.initializeApp(this)
-        Firebase.crashlytics.isCrashlyticsCollectionEnabled = true
+        Firebase.crashlytics.setCrashlyticsCollectionEnabled(true)
         Firebase.analytics.setAnalyticsCollectionEnabled(true)
         initRemoteConfig()
 

@@ -131,17 +131,37 @@ create trigger on_history_inserted
   for each row execute procedure public.trim_listening_history();
 
 
--- 6. ADMIN STATS MATERIALIZED VIEW
-create materialized view public.admin_stats as
-select
-  (select count(*) from auth.users) as total_users,
-  (select count(*) from public.profiles where plan != 'FREE') as paid_users,
-  (select count(*) from public.profiles where plan = 'FREE') as free_users,
-  (select count(*) from public.playlists) as total_playlists,
-  (select count(*) from public.favorites) as total_favorites,
-  (select count(*) from public.listening_history) as total_plays,
-  now() as refreshed_at;
+-- 6. ADMIN STATS TABLE (refreshed periodically, not a mat view — avoids RLS issues)
+create table public.admin_stats (
+  total_users bigint,
+  paid_users bigint,
+  free_users bigint,
+  total_playlists bigint,
+  total_favorites bigint,
+  total_plays bigint,
+  refreshed_at timestamp with time zone
+);
 
--- Only service_role / admin can read this view
-create policy "Admin read only" on public.admin_stats
-  for select using (false); -- enforced via BYPASSRLS service role
+-- Only service_role can read this table (RLS blocks everything else)
+alter table public.admin_stats enable row level security;
+create policy "Block all" on public.admin_stats for all using (false);
+
+-- Refresh function (run this whenever you want updated stats)
+create function public.refresh_admin_stats()
+returns void as $$
+begin
+  delete from public.admin_stats;
+  insert into public.admin_stats
+  select
+    (select count(*) from auth.users) as total_users,
+    (select count(*) from public.profiles where plan != 'FREE') as paid_users,
+    (select count(*) from public.profiles where plan = 'FREE') as free_users,
+    (select count(*) from public.playlists) as total_playlists,
+    (select count(*) from public.favorites) as total_favorites,
+    (select count(*) from public.listening_history) as total_plays,
+    now() as refreshed_at;
+end;
+$$ language plpgsql security definer;
+
+-- Run once to populate
+select public.refresh_admin_stats();
