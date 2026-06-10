@@ -81,7 +81,12 @@ fun PlayerScreen(
         label = "artworkPulse"
     )
 
-    val sleepTimer by viewModel.sleepTimerMinutes.collectAsState()
+    val sleepTimer by viewModel.sleepTimerRemainingSeconds.collectAsState()
+    val sleepTimerText = sleepTimer?.let {
+        val m = it / 60
+        val s = it % 60
+        "%02d:%02d".format(m, s)
+    }
     var showTimerDialog by remember { mutableStateOf(false) }
 
     val showPlaylistSheet by viewModel.showAddToPlaylistSheet.collectAsState()
@@ -165,11 +170,27 @@ fun PlayerScreen(
                         )
                     }
                     IconButton(onClick = { showTimerDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.Timer,
-                            contentDescription = "Sleep Timer",
-                            tint = if (sleepTimer != null) WatermelonRed else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        if (sleepTimerText != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = sleepTimerText,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = WatermelonRed
+                                )
+                                Icon(
+                                    imageVector = Icons.Filled.Timer,
+                                    contentDescription = "Sleep Timer",
+                                    tint = WatermelonRed,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.Timer,
+                                contentDescription = "Sleep Timer",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                     IconButton(onClick = { viewModel.onAddToPlaylistClick() }) {
                         Icon(

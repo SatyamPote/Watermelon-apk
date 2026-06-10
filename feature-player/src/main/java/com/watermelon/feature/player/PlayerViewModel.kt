@@ -66,8 +66,8 @@ class PlayerViewModel @Inject constructor(
     private val _downloadEvent = MutableSharedFlow<Song>(extraBufferCapacity = 1)
     val downloadEvent: SharedFlow<Song> = _downloadEvent.asSharedFlow()
 
-    private val _sleepTimerMinutes = MutableStateFlow<Int?>(null)
-    val sleepTimerMinutes: StateFlow<Int?> = _sleepTimerMinutes.asStateFlow()
+    private val _sleepTimerRemainingSeconds = MutableStateFlow<Int?>(null)
+    val sleepTimerRemainingSeconds: StateFlow<Int?> = _sleepTimerRemainingSeconds.asStateFlow()
 
     private val _showAddToPlaylistSheet = MutableStateFlow(false)
     val showAddToPlaylistSheet: StateFlow<Boolean> = _showAddToPlaylistSheet.asStateFlow()
@@ -485,19 +485,24 @@ class PlayerViewModel @Inject constructor(
     fun startSleepTimer(minutes: Int) {
         sleepTimerJob?.cancel()
         sleepTimerJob = viewModelScope.launch {
-            _sleepTimerMinutes.value = minutes
-            delay(minutes * 60_000L)
-            if (_sleepTimerMinutes.value != null) {
+            var remaining = minutes * 60
+            _sleepTimerRemainingSeconds.value = remaining
+            while (remaining > 0 && _sleepTimerRemainingSeconds.value != null) {
+                delay(1000L)
+                remaining--
+                _sleepTimerRemainingSeconds.value = remaining
+            }
+            if (_sleepTimerRemainingSeconds.value != null) {
                 streamingRepository.pause()
                 _uiState.update { it.copy(isPlaying = false) }
-                _sleepTimerMinutes.value = null
+                _sleepTimerRemainingSeconds.value = null
             }
         }
     }
 
     fun cancelSleepTimer() {
         sleepTimerJob?.cancel()
-        _sleepTimerMinutes.value = null
+        _sleepTimerRemainingSeconds.value = null
     }
 
     override fun onCleared() {

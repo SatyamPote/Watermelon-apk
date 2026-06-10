@@ -5,6 +5,7 @@
 create table public.profiles (
   id uuid references auth.users on delete cascade,
   email text,
+  username text,
   display_name text,
   plan text default 'FREE' not null,
   avatar_url text,
@@ -21,8 +22,14 @@ create policy "Users can insert own profile" on public.profiles for insert with 
 create function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, email, plan, display_name)
-  values (new.id, new.email, 'FREE', split_part(new.email, '@', 1));
+  insert into public.profiles (id, email, username, display_name, plan)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
+    coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1)),
+    'FREE'
+  );
   return new;
 end;
 $$ language plpgsql security definer;

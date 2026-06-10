@@ -6,6 +6,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
@@ -13,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,11 +33,23 @@ fun ProfileScreen(
 ) {
     val user by viewModel.user.collectAsState()
     val isPremium by viewModel.isPremium.collectAsState()
+    val editState by viewModel.editState.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Profile") },
+                actions = {
+                    if (!editState.isEditing) {
+                        IconButton(onClick = { viewModel.toggleEdit() }) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Edit profile")
+                        }
+                    } else {
+                        IconButton(onClick = { viewModel.toggleEdit() }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Cancel edit")
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 )
@@ -52,12 +65,11 @@ fun ProfileScreen(
         ) {
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Avatar
             Box(
                 modifier = Modifier
                     .size(120.dp)
                     .clip(CircleShape)
-                        .background(Color.Black),
+                    .background(Color.Black),
                 contentAlignment = Alignment.Center
             ) {
                 val avatar = user?.avatarUrl
@@ -79,19 +91,61 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = user?.displayName ?: user?.email?.substringBefore("@") ?: "Guest",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            if (!user?.username.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "@${user!!.username}",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            if (editState.isEditing) {
+                OutlinedTextField(
+                    value = editState.displayName,
+                    onValueChange = { viewModel.setDisplayName(it) },
+                    label = { Text("Display Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = editState.username,
+                    onValueChange = { viewModel.setUsername(it) },
+                    label = { Text("Username") },
+                    singleLine = true,
+                    prefix = { Text("@") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                if (editState.error != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = editState.error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { viewModel.saveProfile() },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !editState.isSaving,
+                    colors = ButtonDefaults.buttonColors(containerColor = WatermelonRed)
+                ) {
+                    if (editState.isSaving) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                    } else {
+                        Text("Save", color = Color.White)
+                    }
+                }
+            } else {
+                Text(
+                    text = user?.displayName ?: user?.email?.substringBefore("@") ?: "Guest",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                if (!user?.username.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "@${user!!.username}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

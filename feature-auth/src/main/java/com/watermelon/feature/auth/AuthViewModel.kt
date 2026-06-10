@@ -23,27 +23,40 @@ class AuthViewModel @Inject constructor(
 
     fun signIn(email: String, password: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null, isSuccess = false) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, isSuccess = false, needsEmailVerification = false) }
             val result = authRepository.signIn(email, password)
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    isSuccess = result.isSuccess,
-                    errorMessage = "Something went wrong. Please try again."
-                )
+            if (result.isSuccess) {
+                val verified = authRepository.isEmailVerified()
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isSuccess = verified,
+                        needsEmailVerification = !verified,
+                        errorMessage = null
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isSuccess = false,
+                        errorMessage = "Something went wrong. Please try again."
+                    )
+                }
             }
         }
     }
 
     fun signUp(username: String, email: String, password: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null, isSuccess = false) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, isSuccess = false, needsEmailVerification = false) }
             val result = authRepository.signUp(username, email, password)
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    isSuccess = result.isSuccess,
-                    errorMessage = "Something went wrong. Please try again."
+                    isSuccess = false,
+                    needsEmailVerification = result.isSuccess,
+                    errorMessage = if (result.isSuccess) null else "Something went wrong. Please try again."
                 )
             }
         }
@@ -57,11 +70,31 @@ class AuthViewModel @Inject constructor(
                 it.copy(
                     isLoading = false,
                     resetSent = result.isSuccess,
-                    errorMessage = "Something went wrong. Please try again."
+                    errorMessage = if (result.isSuccess) null else "Something went wrong. Please try again."
                 )
             }
         }
     }
+
+    fun resendVerificationEmail(email: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, resetSent = false) }
+            val result = authRepository.resendVerificationEmail(email)
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    resetSent = result.isSuccess,
+                    errorMessage = if (result.isSuccess) null else "Something went wrong. Please try again."
+                )
+            }
+        }
+    }
+
+    suspend fun isEmailVerified(): Boolean {
+        return authRepository.isEmailVerified()
+    }
+
+    suspend fun getCurrentEmail(): String? = authRepository.getCurrentUserEmail()
 
     fun signOut() {
         viewModelScope.launch {
@@ -71,7 +104,7 @@ class AuthViewModel @Inject constructor(
     }
 
     fun clearMessage() {
-        _uiState.update { it.copy(errorMessage = null, isSuccess = false, resetSent = false) }
+        _uiState.update { it.copy(errorMessage = null, isSuccess = false, resetSent = false, needsEmailVerification = false) }
     }
 
     val isAuthenticated: StateFlow<Boolean> = authRepository.isAuthenticated()
@@ -81,6 +114,7 @@ class AuthViewModel @Inject constructor(
 data class AuthUiState(
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
+    val needsEmailVerification: Boolean = false,
     val resetSent: Boolean = false,
     val errorMessage: String? = null
 )

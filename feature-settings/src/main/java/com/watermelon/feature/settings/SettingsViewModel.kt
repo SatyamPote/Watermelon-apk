@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -26,6 +27,9 @@ class SettingsViewModel @Inject constructor(
 
     private val _cacheCleared = MutableStateFlow(false)
     val cacheCleared: StateFlow<Boolean> = _cacheCleared.asStateFlow()
+
+    private val _deleteState = MutableStateFlow(DeleteAccountState())
+    val deleteState: StateFlow<DeleteAccountState> = _deleteState.asStateFlow()
 
     fun logout(onComplete: () -> Unit) {
         viewModelScope.launch {
@@ -44,4 +48,27 @@ class SettingsViewModel @Inject constructor(
     fun resetCacheFlag() {
         _cacheCleared.value = false
     }
+
+    fun deleteAccount(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            _deleteState.update { it.copy(isDeleting = true, error = null) }
+            val result = authRepository.deleteAccount()
+            if (result.isSuccess) {
+                _deleteState.update { DeleteAccountState(deleted = true) }
+                onComplete()
+            } else {
+                _deleteState.update { it.copy(isDeleting = false, error = "Failed to delete account. Try again.") }
+            }
+        }
+    }
+
+    fun clearDeleteError() {
+        _deleteState.update { it.copy(error = null) }
+    }
 }
+
+data class DeleteAccountState(
+    val isDeleting: Boolean = false,
+    val deleted: Boolean = false,
+    val error: String? = null
+)

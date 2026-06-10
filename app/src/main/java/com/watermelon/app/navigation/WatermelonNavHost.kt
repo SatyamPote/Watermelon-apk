@@ -3,8 +3,6 @@ package com.watermelon.app.navigation
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,11 +24,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.watermelon.app.R
-import androidx.navigation.NavGraphBuilder
 import com.watermelon.core.navigation.Routes
 import com.watermelon.domain.model.RadioStation
 import com.watermelon.domain.model.Song
 import com.watermelon.feature.auth.AuthViewModel
+import com.watermelon.feature.auth.EmailVerificationScreen
 import com.watermelon.feature.auth.ForgotPasswordScreen
 import com.watermelon.feature.auth.LoginScreen
 import com.watermelon.feature.auth.RegisterScreen
@@ -78,9 +76,16 @@ fun WatermelonNavHost(
 
             LaunchedEffect(Unit) {
                 delay(1500)
-                val target = if (isAuthenticated) Routes.HOME else Routes.LOGIN
-                navController.navigate(target) {
-                    popUpTo(Routes.SPLASH) { inclusive = true }
+                if (isAuthenticated) {
+                    val verified = authViewModel.isEmailVerified()
+                    val target = if (verified) Routes.HOME else Routes.VERIFY_EMAIL
+                    navController.navigate(target) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                } else {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
                 }
             }
             Box(
@@ -105,6 +110,18 @@ fun WatermelonNavHost(
             )
         }
         composable(Routes.LOGIN) {
+            val authViewModel: AuthViewModel = hiltViewModel()
+            val uiState by authViewModel.uiState.collectAsState()
+
+            LaunchedEffect(uiState.needsEmailVerification) {
+                if (uiState.needsEmailVerification) {
+                    authViewModel.clearMessage()
+                    navController.navigate(Routes.VERIFY_EMAIL) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                }
+            }
+
             LoginScreen(
                 onNavigateToRegister = { navController.navigate(Routes.REGISTER) },
                 onNavigateToForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) },
@@ -116,11 +133,38 @@ fun WatermelonNavHost(
             )
         }
         composable(Routes.REGISTER) {
+            val authViewModel: AuthViewModel = hiltViewModel()
+            val uiState by authViewModel.uiState.collectAsState()
+
+            LaunchedEffect(uiState.needsEmailVerification) {
+                if (uiState.needsEmailVerification) {
+                    authViewModel.clearMessage()
+                    navController.navigate(Routes.VERIFY_EMAIL) {
+                        popUpTo(Routes.REGISTER) { inclusive = true }
+                    }
+                }
+            }
+
             RegisterScreen(
                 onNavigateToLogin = { navController.popBackStack() },
                 onAuthSuccess = {
                     navController.navigate(Routes.HOME) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(Routes.VERIFY_EMAIL) {
+            val authViewModel: AuthViewModel = hiltViewModel()
+            EmailVerificationScreen(
+                onVerified = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.VERIFY_EMAIL) { inclusive = true }
+                    }
+                },
+                onBackToLogin = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.VERIFY_EMAIL) { inclusive = true }
                     }
                 }
             )
@@ -190,6 +234,14 @@ fun WatermelonNavHost(
                 onBackClick = { navController.popBackStack() },
                 onSongClick = { song: Song ->
                     playerViewModel.playSong(song)
+                    navController.navigate(Routes.PLAYER)
+                },
+                onPlayAllClick = { songs: List<Song> ->
+                    playerViewModel.playQueue(songs, 0)
+                    navController.navigate(Routes.PLAYER)
+                },
+                onShuffleClick = { songs: List<Song> ->
+                    playerViewModel.playQueue(songs.shuffled(), 0)
                     navController.navigate(Routes.PLAYER)
                 }
             )

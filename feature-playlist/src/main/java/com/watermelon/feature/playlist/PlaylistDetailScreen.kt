@@ -44,8 +44,8 @@ fun PlaylistDetailScreen(
     playlistId: String,
     onBackClick: () -> Unit,
     onSongClick: (Song) -> Unit,
-    onShuffleClick: () -> Unit = {},
-    onPlayAllClick: () -> Unit = {},
+    onShuffleClick: (List<Song>) -> Unit = {},
+    onPlayAllClick: (List<Song>) -> Unit = {},
     viewModel: PlaylistDetailViewModel = hiltViewModel()
 ) {
     val playlist by viewModel.playlist.collectAsStateWithLifecycle()
@@ -109,14 +109,46 @@ fun PlaylistDetailScreen(
                         .height(180.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    val cover = playlist?.coverUrl
-                        ?: playlist?.songs?.firstOrNull()?.coverUrl
-                        ?: "https://picsum.photos/seed/$playlistId/400/400"
-                    AsyncImage(
-                        model = cover,
-                        contentDescription = "Playlist cover",
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    val covers = playlist?.songs?.mapNotNull { it.coverUrl }?.take(4) ?: emptyList()
+                    when {
+                        covers.isEmpty() -> {
+                            AsyncImage(
+                                model = "https://picsum.photos/seed/$playlistId/400/400",
+                                contentDescription = "Playlist cover",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        covers.size == 1 -> {
+                            AsyncImage(model = covers[0], contentDescription = null, modifier = Modifier.fillMaxSize())
+                        }
+                        covers.size == 2 -> {
+                            Row(modifier = Modifier.fillMaxSize()) {
+                                AsyncImage(model = covers[0], contentDescription = null, modifier = Modifier.weight(1f).fillMaxHeight())
+                                AsyncImage(model = covers[1], contentDescription = null, modifier = Modifier.weight(1f).fillMaxHeight())
+                            }
+                        }
+                        covers.size == 3 -> {
+                            Row(modifier = Modifier.fillMaxSize()) {
+                                AsyncImage(model = covers[0], contentDescription = null, modifier = Modifier.weight(1f).fillMaxHeight())
+                                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                    AsyncImage(model = covers[1], contentDescription = null, modifier = Modifier.weight(1f).fillMaxWidth())
+                                    AsyncImage(model = covers[2], contentDescription = null, modifier = Modifier.weight(1f).fillMaxWidth())
+                                }
+                            }
+                        }
+                        else -> {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                    AsyncImage(model = covers[0], contentDescription = null, modifier = Modifier.weight(1f).fillMaxHeight())
+                                    AsyncImage(model = covers[1], contentDescription = null, modifier = Modifier.weight(1f).fillMaxHeight())
+                                }
+                                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                    AsyncImage(model = covers[2], contentDescription = null, modifier = Modifier.weight(1f).fillMaxHeight())
+                                    AsyncImage(model = covers[3], contentDescription = null, modifier = Modifier.weight(1f).fillMaxHeight())
+                                }
+                            }
+                        }
+                    }
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -145,7 +177,7 @@ fun PlaylistDetailScreen(
                     onClick = {
                         val songs = playlist?.songs?.map { it.toSong() } ?: emptyList()
                         if (songs.isNotEmpty()) {
-                            onPlayAllClick()
+                            onPlayAllClick(songs)
                         }
                     },
                     modifier = Modifier.size(48.dp),
@@ -157,7 +189,12 @@ fun PlaylistDetailScreen(
                     Icon(Icons.Filled.PlayArrow, contentDescription = "Play All", modifier = Modifier.size(24.dp))
                 }
                 OutlinedIconButton(
-                    onClick = onShuffleClick,
+                    onClick = {
+                        val songs = playlist?.songs?.map { it.toSong() } ?: emptyList()
+                        if (songs.isNotEmpty()) {
+                            onShuffleClick(songs)
+                        }
+                    },
                     modifier = Modifier.size(48.dp),
                     enabled = !playlist?.songs.isNullOrEmpty()
                 ) {

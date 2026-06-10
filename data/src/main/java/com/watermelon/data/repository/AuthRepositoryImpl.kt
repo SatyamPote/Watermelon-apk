@@ -17,35 +17,28 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import javax.inject.Inject
 import javax.inject.Singleton
-
 
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val client: SupabaseClient,
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val httpClient: OkHttpClient
 ) : AuthRepository {
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     override suspend fun signUp(username: String, email: String, password: String): Result<Unit> = runCatching {
-        client.auth.signUpWith(Email) {
+        val result = client.auth.signUpWith(Email) {
             this.email = email
             this.password = password
             this.data = buildJsonObject {
                 put("username", username)
+                put("display_name", username)
             }
-        }
-        val user = client.auth.currentUserOrNull()
-        if (user != null && username.isNotBlank()) {
-            try {
-                client.postgrest.from("profiles").update(
-                    UsernameUpdate(username = username)
-                ) {
-                    filter { eq("id", user.id) }
-                }
-            } catch (_: Exception) { /* profiles table may not have username column yet */ }
         }
         Unit
     }
@@ -65,7 +58,75 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun resetPassword(email: String): Result<Unit> = runCatching {
-        client.auth.resetPasswordForEmail(email)
+        client.auth.resetPasswordForEmail(email, redirectUrl = "watermelon://reset-password")
+    }
+
+    override suspend fun resendVerificationEmail(email: String): Result<Unit> = runCatching {
+        val body = okhttp3.FormBody.Builder()
+            .add("type", "signup")
+            .add("email", email)
+            .build()
+        val request = Request.Builder()
+            .url("${BuildConfig.SUPABASE_URL}/auth/v1/resend")
+            .addHeader("apikey", BuildConfig.SUPABASE_KEY)
+            .post(body)
+            .build()
+        val response = httpClient.newCall(request).execute()
+        if (!response.isSuccessful) {
+            throw IllegalStateException("Resend failed: ${response.code}")
+        }
+        Unit
+    }
+
+    override suspend fun isEmailVerified(): Boolean {
+        return client.auth.currentUserOrNull()?.emailConfirmedAt != null
+    }
+
+    override suspend fun updateDisplayName(name: String): Result<Unit> = runCatching {
+        val uid = getCurrentUserId() ?: throw IllegalStateException("Not logged in")
+        client.postgrest.from("profiles").update(
+            mapOf("display_name" to name)
+        ) {
+            filter { eq("id", uid) }
+        }
+        Unit
+    }
+
+    override suspend fun updateUsername(name: String): Result<Unit> = runCatching {
+        val uid = getCurrentUserId() ?: throw IllegalStateException("Not logged in")
+        client.postgrest.from("profiles").update(
+            mapOf("username" to name)
+        ) {
+            filter { eq("id", uid) }
+        }
+        Unit
+    }
+
+    override suspend fun updateAvatar(url: String): Result<Unit> = runCatching {
+        val uid = getCurrentUserId() ?: throw IllegalStateException("Not logged in")
+        client.postgrest.from("profiles").update(
+            mapOf("avatar_url" to url)
+        ) {
+            filter { eq("id", uid) }
+        }
+        Unit
+    }
+
+    override suspend fun deleteAccount(): Result<Unit> = runCatching {
+        val token = getCurrentAccessToken() ?: throw IllegalStateException("No session")
+        val url = "${BuildConfig.SUPABASE_URL}/auth/v1/user"
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "Bearer $token")
+            .addHeader("apikey", BuildConfig.SUPABASE_KEY)
+            .delete()
+            .build()
+        val response = httpClient.newCall(request).execute()
+        if (!response.isSuccessful) {
+            throw IllegalStateException("Delete failed: ${response.code}")
+        }
+        signOut()
+        Unit
     }
 
     override fun isAuthenticated(): Flow<Boolean> {
@@ -112,6 +173,10 @@ class AuthRepositoryImpl @Inject constructor(
         return client.auth.currentUserOrNull()?.email ?: fallbackLocalUser()?.email
     }
 
+    override suspend fun getCurrentAccessToken(): String? {
+        return client.auth.currentSessionOrNull()?.accessToken
+    }
+
     private fun fallbackLocalUser(): User? {
         if (!prefs.getBoolean(KEY_LOGGED_IN, false)) return null
         val email = prefs.getString(KEY_EMAIL, "user@watermelon.app") ?: "user@watermelon.app"
@@ -133,6 +198,3 @@ class AuthRepositoryImpl @Inject constructor(
         private const val KEY_PLAN = "auth_plan"
     }
 }
-
-@Serializable
-private data class UsernameUpdate(val username: String)

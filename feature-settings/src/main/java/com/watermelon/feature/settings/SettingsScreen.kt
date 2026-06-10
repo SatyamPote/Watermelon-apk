@@ -80,6 +80,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     var showThemeDialog by remember { mutableStateOf(false) }
     var showAvatarDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     val plan = user?.plan ?: SubscriptionPlan.FREE
     val avatarColor = remember { AvatarColors.getOrNull(AvatarManager.get(context)) ?: AvatarColors.first() }
@@ -223,6 +224,25 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
+            OutlinedButton(
+                onClick = { showDeleteDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .height(48.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                ),
+                border = ButtonDefaults.outlinedButtonBorder.copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                )
+            ) {
+                Text("Delete Account", style = MaterialTheme.typography.labelLarge)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Button(
                 onClick = { viewModel.logout(onLogoutComplete) },
                 modifier = Modifier
@@ -274,6 +294,14 @@ fun SettingsScreen(
                 showAvatarDialog = false
                 (context as? Activity)?.recreate()
             }
+        )
+    }
+
+    if (showDeleteDialog) {
+        DeleteAccountDialog(
+            state = viewModel.deleteState.collectAsStateWithLifecycle().value,
+            onDismiss = { showDeleteDialog = false },
+            onConfirm = { viewModel.deleteAccount { onLogoutComplete() } }
         )
     }
 }
@@ -421,6 +449,63 @@ private fun AvatarPickerDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         titleContentColor = MaterialTheme.colorScheme.onSurface,
         textContentColor = MaterialTheme.colorScheme.onSurface
+    )
+}
+
+@Composable
+private fun DeleteAccountDialog(
+    state: DeleteAccountState,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    var confirmation by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = { if (!state.isDeleting) onDismiss() },
+        icon = { Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+        title = { Text("Delete Account") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "This will permanently delete your account, playlists, favorites and all data. This action cannot be undone.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    "Type \"DELETE\" below to confirm.",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = confirmation,
+                    onValueChange = { confirmation = it },
+                    label = { Text("Confirmation") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                if (state.error != null) {
+                    Text(state.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = confirmation == "DELETE" && !state.isDeleting,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                if (state.isDeleting) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                } else {
+                    Text("Delete Forever", color = Color.White)
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !state.isDeleting) {
+                Text("Cancel")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }
 

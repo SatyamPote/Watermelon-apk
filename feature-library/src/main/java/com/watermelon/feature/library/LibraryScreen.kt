@@ -210,12 +210,9 @@ private fun PlaylistList(
                         modifier = Modifier.padding(WatermelonSpacing.md),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        AsyncImage(
-                            model = playlist.coverUrl,
-                            contentDescription = playlist.name,
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                        PlaylistCoverGrid(
+                            songs = playlist.songs,
+                            modifier = Modifier.size(64.dp)
                         )
                         Spacer(modifier = Modifier.width(WatermelonSpacing.md))
                         Column(modifier = Modifier.weight(1f)) {
@@ -240,6 +237,60 @@ private fun PlaylistList(
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaylistCoverGrid(
+    songs: List<com.watermelon.domain.model.PlaylistSong>,
+    modifier: Modifier = Modifier
+) {
+    val covers = songs.mapNotNull { it.coverUrl }.take(4)
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        when (covers.size) {
+            0 -> {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                    contentDescription = null,
+                    modifier = Modifier.align(Alignment.Center).size(32.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+            }
+            1 -> {
+                AsyncImage(model = covers[0], contentDescription = null, modifier = Modifier.fillMaxSize())
+            }
+            2 -> {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(model = covers[0], contentDescription = null, modifier = Modifier.weight(1f).fillMaxHeight())
+                    AsyncImage(model = covers[1], contentDescription = null, modifier = Modifier.weight(1f).fillMaxHeight())
+                }
+            }
+            3 -> {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(model = covers[0], contentDescription = null, modifier = Modifier.weight(1f).fillMaxHeight())
+                    Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                        AsyncImage(model = covers[1], contentDescription = null, modifier = Modifier.weight(1f).fillMaxWidth())
+                        AsyncImage(model = covers[2], contentDescription = null, modifier = Modifier.weight(1f).fillMaxWidth())
+                    }
+                }
+            }
+            else -> {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        AsyncImage(model = covers[0], contentDescription = null, modifier = Modifier.weight(1f).fillMaxHeight())
+                        AsyncImage(model = covers[1], contentDescription = null, modifier = Modifier.weight(1f).fillMaxHeight())
+                    }
+                    Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        AsyncImage(model = covers[2], contentDescription = null, modifier = Modifier.weight(1f).fillMaxHeight())
+                        AsyncImage(model = covers[3], contentDescription = null, modifier = Modifier.weight(1f).fillMaxHeight())
                     }
                 }
             }
