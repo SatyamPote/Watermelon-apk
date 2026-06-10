@@ -56,3 +56,6 @@ app/debug/
 
 # Kotlin compile daemon
 .kotlin/
+
+# Temporary embedded repo
+temp-npe/

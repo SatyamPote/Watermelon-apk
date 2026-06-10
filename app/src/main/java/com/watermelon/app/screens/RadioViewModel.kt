@@ -94,7 +94,11 @@ class RadioViewModel @Inject constructor(
                     .filter { it.name.isNotBlank() }
                     .sortedByDescending { it.stationcount }
                     .map { it.toDomain() }
+                val india = countries.find { it.name.equals("India", ignoreCase = true) }
                 _uiState.update { it.copy(countries = countries, isLoading = false) }
+                if (india != null) {
+                    selectCountry(india)
+                }
             } catch (e: Exception) {
                 Timber.e(e, "Failed to load countries")
                 _uiState.update { it.copy(isLoading = false, error = "Failed to load countries") }

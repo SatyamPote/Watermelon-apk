@@ -19,6 +19,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -114,17 +116,22 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun deleteAccount(): Result<Unit> = runCatching {
         val token = getCurrentAccessToken() ?: throw IllegalStateException("No session")
-        val url = "${BuildConfig.SUPABASE_URL}/auth/v1/user"
+        val base = BuildConfig.SUPABASE_URL.removeSuffix("/")
+        val url = "$base/auth/v1/user"
+        val body = "{}".toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
         val request = Request.Builder()
             .url(url)
             .addHeader("Authorization", "Bearer $token")
             .addHeader("apikey", BuildConfig.SUPABASE_KEY)
-            .delete()
+            .addHeader("Content-Type", "application/json")
+            .delete(body)
             .build()
         val response = httpClient.newCall(request).execute()
         if (!response.isSuccessful) {
-            throw IllegalStateException("Delete failed: ${response.code}")
+            val bodyString = response.body?.string() ?: ""
+            throw IllegalStateException("Delete failed: ${response.code} - $bodyString")
         }
+        response.body?.close()
         signOut()
         Unit
     }

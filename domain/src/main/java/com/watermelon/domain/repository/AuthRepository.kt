@@ -14,6 +14,7 @@ interface AuthRepository {
     suspend fun updateUsername(name: String): Result<Unit>
     suspend fun updateAvatar(url: String): Result<Unit>
     suspend fun deleteAccount(): Result<Unit>
+    suspend fun refreshUser(): User?
     fun isAuthenticated(): Flow<Boolean>
     fun getCurrentUser(): Flow<User?>
     suspend fun getCurrentUserId(): String?

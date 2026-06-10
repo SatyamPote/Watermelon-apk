@@ -37,8 +37,7 @@ class PlaylistRepositoryImpl @Inject constructor(
     private val _playlists = MutableStateFlow(loadLocalCache())
 
     override fun getUserPlaylists(): Flow<List<Playlist>> = flow {
-        val local = loadLocalCache()
-        emit(local)
+        emit(_playlists.value)
         val remote = runCatching { fetchRemotePlaylists() }.getOrDefault(emptyList())
         if (remote.isNotEmpty() || isLoggedIn()) {
             _playlists.value = remote
@@ -62,11 +61,8 @@ class PlaylistRepositoryImpl @Inject constructor(
                 cover_url = coverUrl
             )
             client.postgrest.from("playlists").insert(newRow)
-            val playlist = newRow.toDomain(emptyList())
-            val updated = _playlists.value.toMutableList().apply { add(playlist) }
-            _playlists.value = updated
-            saveLocalCache(updated)
-            playlist
+            refreshPlaylists()
+            _playlists.value.firstOrNull { it.id == newRow.id } ?: newRow.toDomain(emptyList())
         }
     }
 

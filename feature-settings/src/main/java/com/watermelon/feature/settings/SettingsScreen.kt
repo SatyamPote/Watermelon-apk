@@ -167,9 +167,15 @@ fun SettingsScreen(
                             overflow = TextOverflow.Ellipsis,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        if (!user?.email.isNullOrBlank()) {
+                        if (!user?.username.isNullOrBlank()) {
                             Text(
-                                text = user!!.email,
+                                text = "@${user!!.username}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else if (!user?.email.isNullOrBlank()) {
+                            Text(
+                                text = user!!.email.substringBefore("@"),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -344,7 +350,12 @@ private fun ThemeSelectorDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         rowThemes.forEach { theme ->
-                            val locked = false // unlocked for testing
+                            val isPremium = currentPlan != SubscriptionPlan.FREE
+                            val locked = when {
+                                theme.requiresStudent -> currentPlan != SubscriptionPlan.STUDENT
+                                theme.requiresPremium -> !isPremium
+                                else -> false
+                            }
                             val selected = currentMode == theme.key
                             val previewColor = themePreviewColor(theme)
                             val bgColor = if (selected) previewColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant
@@ -368,16 +379,22 @@ private fun ThemeSelectorDialog(
                                         modifier = Modifier
                                             .size(36.dp)
                                             .clip(CircleShape)
-                                            .background(previewColor)
-                                    )
+                                            .background(previewColor.copy(alpha = if (locked) 0.4f else 1f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (locked) {
+                                            Text("🔒", style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
                                         text = theme.label,
                                         style = MaterialTheme.typography.labelSmall,
                                         maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = if (locked) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurface
                                     )
-                                    if (selected) {
+                                    if (selected && !locked) {
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = "✓",

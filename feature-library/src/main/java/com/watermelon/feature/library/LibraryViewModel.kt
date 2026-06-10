@@ -40,7 +40,8 @@ class LibraryViewModel @Inject constructor(
         playlists,
         userPlan
     ) { list, plan ->
-        plan != SubscriptionPlan.FREE || list.size < 3
+        val max = if (plan == SubscriptionPlan.FREE) 3 else 10
+        list.size < max
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     suspend fun createPlaylist(name: String, description: String?) {
