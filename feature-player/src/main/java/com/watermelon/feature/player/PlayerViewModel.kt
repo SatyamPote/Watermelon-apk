@@ -11,6 +11,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -50,7 +53,8 @@ class PlayerViewModel @Inject constructor(
     private val urlExtractor: UrlExtractorRepository,
     private val userActionsRepository: UserActionsRepository,
     private val lyricsRepository: LyricsRepository,
-    private val catalogRepository: com.watermelon.domain.repository.MusicCatalogRepository
+    private val catalogRepository: com.watermelon.domain.repository.MusicCatalogRepository,
+    private val playlistRepository: com.watermelon.domain.repository.PlaylistRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlayerUiState())
@@ -61,6 +65,18 @@ class PlayerViewModel @Inject constructor(
 
     private val _downloadEvent = MutableSharedFlow<Song>(extraBufferCapacity = 1)
     val downloadEvent: SharedFlow<Song> = _downloadEvent.asSharedFlow()
+
+    private val _sleepTimerMinutes = MutableStateFlow<Int?>(null)
+    val sleepTimerMinutes: StateFlow<Int?> = _sleepTimerMinutes.asStateFlow()
+
+    private val _showAddToPlaylistSheet = MutableStateFlow(false)
+    val showAddToPlaylistSheet: StateFlow<Boolean> = _showAddToPlaylistSheet.asStateFlow()
+
+    private val _playlists = MutableStateFlow<List<com.watermelon.domain.model.Playlist>>(emptyList())
+    val playlists: StateFlow<List<com.watermelon.domain.model.Playlist>> = _playlists.asStateFlow()
+
+    private val _addToPlaylistMessage = MutableStateFlow<String?>(null)
+    val addToPlaylistMessage: StateFlow<String?> = _addToPlaylistMessage.asStateFlow()
 
     private val internalQueue = mutableListOf<Song>()
     private var originalQueue = listOf<Song>()
@@ -94,7 +110,7 @@ class PlayerViewModel @Inject constructor(
         override fun onPlaybackError(error: String) {
             consecutiveErrors++
             _uiState.update {
-                it.copy(isBuffering = false, isPlaying = false, errorMessage = error)
+                            it.copy(isBuffering = false, isPlaying = false, errorMessage = "Playback error. Retrying...")
             }
             if (consecutiveErrors > MAX_CONSECUTIVE_ERRORS) {
                 Timber.e("Max consecutive errors reached. Stopping auto-retry.")
@@ -137,11 +153,13 @@ class PlayerViewModel @Inject constructor(
                         playCurrent()
                     } else {
                         val lastSong = internalQueue.getOrNull(currentIndex)
-                        _uiState.update { it.copy(isPlaying = false, positionMs = 0) }
                         if (lastSong != null) {
+                            _uiState.update { it.copy(isBuffering = true) }
                             viewModelScope.launch {
                                 smartRefillQueue(lastSong)
                             }
+                        } else {
+                            _uiState.update { it.copy(isPlaying = false, positionMs = 0) }
                         }
                     }
                 }
@@ -151,6 +169,39 @@ class PlayerViewModel @Inject constructor(
 
     init {
         streamingRepository.addListener(listener)
+        loadPlaylists()
+    }
+
+    private fun loadPlaylists() {
+        playlistRepository.getUserPlaylists()
+            .catch { /* silently ignore */ }
+            .onEach { _playlists.value = it }
+            .launchIn(viewModelScope)
+    }
+
+    fun onAddToPlaylistClick() {
+        _showAddToPlaylistSheet.value = true
+    }
+
+    fun onDismissAddToPlaylist() {
+        _showAddToPlaylistSheet.value = false
+    }
+
+    fun onPlaylistSelected(playlistId: String) {
+        val song = internalQueue.getOrNull(currentIndex) ?: return
+        viewModelScope.launch {
+            val result = playlistRepository.addSongToPlaylist(playlistId, song)
+            _addToPlaylistMessage.value = if (result.isSuccess) {
+                "Added to playlist"
+            } else {
+                result.exceptionOrNull()?.message ?: "Failed to add song"
+            }
+            _showAddToPlaylistSheet.value = false
+        }
+    }
+
+    fun clearAddToPlaylistMessage() {
+        _addToPlaylistMessage.value = null
     }
 
     fun playSong(song: Song) {
@@ -193,7 +244,7 @@ class PlayerViewModel @Inject constructor(
                     }
                     .onFailure { e ->
                         _uiState.update {
-                            it.copy(isBuffering = false, errorMessage = e.localizedMessage ?: "Playback error")
+                            it.copy(isBuffering = false, errorMessage = "Something went wrong. Please try again.")
                         }
                     }
             }.onFailure { e ->
@@ -249,12 +300,22 @@ class PlayerViewModel @Inject constructor(
     fun playNext() {
         if (hasNextInternal()) {
             playNextInternal()
+        } else {
+            val currentSong = internalQueue.getOrNull(currentIndex)
+            if (currentSong != null) {
+                viewModelScope.launch {
+                    smartRefillQueue(currentSong)
+                }
+            }
         }
     }
 
     fun playPrevious() {
         if (currentIndex > 0) {
             currentIndex--
+            playCurrent()
+        } else if (internalQueue.isNotEmpty()) {
+            currentIndex = internalQueue.size - 1
             playCurrent()
         }
     }
@@ -370,27 +431,36 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun smartRefillQueue(lastSong: Song) {
-        val query = buildString {
-            append(lastSong.artistName)
-            if (!lastSong.genre.isNullOrBlank()) {
-                append(" ${lastSong.genre}")
-            }
-            append(" music")
-        }
+        val queries = listOfNotNull(
+            "${lastSong.artistName} ${lastSong.title} music".takeIf {
+                lastSong.artistName.isNotBlank() && lastSong.title.isNotBlank()
+            },
+            "${lastSong.artistName} music".takeIf { lastSong.artistName.isNotBlank() },
+            lastSong.genre?.takeIf { it.isNotBlank() },
+            "trending music"
+        )
         viewModelScope.launch {
-            runCatching {
-                val similar = catalogRepository.search(query).first()
-                    .filter { it.id != lastSong.id }
-                    .take(5)
-                if (similar.isNotEmpty()) {
+            var found = false
+            for (query in queries) {
+                if (found) break
+                val similar = runCatching {
+                    catalogRepository.search(query).first()
+                        .filter { it.id != lastSong.id }
+                        .take(5)
+                }.getOrNull()
+                if (!similar.isNullOrEmpty()) {
                     originalQueue = similar.toList()
                     internalQueue.clear()
                     internalQueue.addAll(similar)
                     currentIndex = 0
                     isShuffleOn = false
                     playCurrent()
+                    found = true
                 }
-            }.onFailure { Timber.e(it, "Smart refill failed") }
+            }
+            if (!found) {
+                _uiState.update { it.copy(isPlaying = false, positionMs = 0, isBuffering = false) }
+            }
         }
     }
 
@@ -404,10 +474,30 @@ class PlayerViewModel @Inject constructor(
                 val directUrl = urlExtractor.extractAudioUrl(sourceUrl).getOrThrow()
                 _downloadEvent.emit(song.copy(audioUrl = directUrl))
             }.onFailure { e ->
-                _uiState.update { it.copy(errorMessage = "Download failed: ${e.message}") }
+                _uiState.update { it.copy(errorMessage = "Download failed. Please try again.") }
             }
             _uiState.update { it.copy(isBuffering = false) }
         }
+    }
+
+    private var sleepTimerJob: Job? = null
+
+    fun startSleepTimer(minutes: Int) {
+        sleepTimerJob?.cancel()
+        sleepTimerJob = viewModelScope.launch {
+            _sleepTimerMinutes.value = minutes
+            delay(minutes * 60_000L)
+            if (_sleepTimerMinutes.value != null) {
+                streamingRepository.pause()
+                _uiState.update { it.copy(isPlaying = false) }
+                _sleepTimerMinutes.value = null
+            }
+        }
+    }
+
+    fun cancelSleepTimer() {
+        sleepTimerJob?.cancel()
+        _sleepTimerMinutes.value = null
     }
 
     override fun onCleared() {

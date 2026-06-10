@@ -3,15 +3,20 @@ package com.watermelon.feature.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.watermelon.data.remote.watermelon.WatermelonRepository
+import com.watermelon.domain.model.Playlist
 import com.watermelon.domain.model.Song
 import com.watermelon.domain.repository.MusicCatalogRepository
+import com.watermelon.domain.repository.PlaylistRepository
 import com.watermelon.domain.repository.UserActionsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -20,15 +25,64 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val musicCatalogRepository: MusicCatalogRepository,
     private val userActionsRepository: UserActionsRepository,
+    private val playlistRepository: PlaylistRepository,
     private val watermelonRepository: WatermelonRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private val _playlists = MutableStateFlow<List<Playlist>>(emptyList())
+    val playlists: StateFlow<List<Playlist>> = _playlists.asStateFlow()
+
+    private val _showAddToPlaylistSheet = MutableStateFlow(false)
+    val showAddToPlaylistSheet: StateFlow<Boolean> = _showAddToPlaylistSheet.asStateFlow()
+
+    private val _selectedSong = MutableStateFlow<Song?>(null)
+    val selectedSong: StateFlow<Song?> = _selectedSong.asStateFlow()
+
+    private val _addToPlaylistMessage = MutableStateFlow<String?>(null)
+    val addToPlaylistMessage: StateFlow<String?> = _addToPlaylistMessage.asStateFlow()
+
     init {
         warmUpBackend()
         loadHomeData()
+        loadPlaylists()
+    }
+
+    private fun loadPlaylists() {
+        playlistRepository.getUserPlaylists()
+            .catch { /* silently ignore */ }
+            .onEach { _playlists.value = it }
+            .launchIn(viewModelScope)
+    }
+
+    fun onAddToPlaylistClick(song: Song) {
+        _selectedSong.value = song
+        _showAddToPlaylistSheet.value = true
+    }
+
+    fun onDismissAddToPlaylist() {
+        _showAddToPlaylistSheet.value = false
+        _selectedSong.value = null
+    }
+
+    fun onPlaylistSelected(playlistId: String) {
+        val song = _selectedSong.value ?: return
+        viewModelScope.launch {
+            val result = playlistRepository.addSongToPlaylist(playlistId, song)
+            _addToPlaylistMessage.value = if (result.isSuccess) {
+                "Added to playlist"
+            } else {
+                result.exceptionOrNull()?.message ?: "Failed to add song"
+            }
+            _showAddToPlaylistSheet.value = false
+            _selectedSong.value = null
+        }
+    }
+
+    fun clearAddToPlaylistMessage() {
+        _addToPlaylistMessage.value = null
     }
 
     private fun warmUpBackend() {

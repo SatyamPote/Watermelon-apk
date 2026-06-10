@@ -29,7 +29,7 @@ class AuthViewModel @Inject constructor(
                 it.copy(
                     isLoading = false,
                     isSuccess = result.isSuccess,
-                    errorMessage = result.exceptionOrNull()?.message
+                    errorMessage = "Something went wrong. Please try again."
                 )
             }
         }
@@ -43,7 +43,7 @@ class AuthViewModel @Inject constructor(
                 it.copy(
                     isLoading = false,
                     isSuccess = result.isSuccess,
-                    errorMessage = result.exceptionOrNull()?.message
+                    errorMessage = "Something went wrong. Please try again."
                 )
             }
         }
@@ -57,7 +57,7 @@ class AuthViewModel @Inject constructor(
                 it.copy(
                     isLoading = false,
                     resetSent = result.isSuccess,
-                    errorMessage = result.exceptionOrNull()?.message
+                    errorMessage = "Something went wrong. Please try again."
                 )
             }
         }

@@ -139,15 +139,175 @@ private val StudentColorScheme = darkColorScheme(
     scrim = Color.Black.copy(alpha = 0.8f)
 )
 
+private val ObsidianGoldColorScheme = darkColorScheme(
+    primary = Color(0xFFD4AF37),
+    onPrimary = Color.Black,
+    primaryContainer = Color(0xFF3D2E00),
+    onPrimaryContainer = Color(0xFFFFF8E1),
+    secondary = Color(0xFF2A2A2A),
+    onSecondary = Color(0xFFE0E0E0),
+    secondaryContainer = Color(0xFF333333),
+    onSecondaryContainer = Color(0xFFE0E0E0),
+    tertiary = Color(0xFFBFA76F),
+    onTertiary = Color(0xFF1A1A1A),
+    tertiaryContainer = Color(0xFF423300),
+    onTertiaryContainer = Color(0xFFFFF0B2),
+    background = Color(0xFF0D0D0D),
+    onBackground = Color(0xFFF5F5F5),
+    surface = Color(0xFF1A1A1A),
+    onSurface = Color(0xFFF5F5F5),
+    surfaceVariant = Color(0xFF242424),
+    onSurfaceVariant = Color(0xFFB0B0B0),
+    surfaceTint = Color(0xFFD4AF37),
+    inverseSurface = LightSurface,
+    inverseOnSurface = LightOnSurface,
+    error = Color(0xFFFF5252),
+    onError = Color.White,
+    errorContainer = Color(0xFF2A0A0A),
+    onErrorContainer = Color(0xFFFFB3B3),
+    outline = Color(0xFF3A3A3A),
+    outlineVariant = Color(0xFF242424),
+    scrim = Color.Black.copy(alpha = 0.8f)
+)
+
+private val EmeraldDynastyColorScheme = darkColorScheme(
+    primary = Color(0xFF50C878),
+    onPrimary = Color.Black,
+    primaryContainer = Color(0xFF004D00),
+    onPrimaryContainer = Color(0xFFE0F8E0),
+    secondary = Color(0xFF1A2E1A),
+    onSecondary = Color(0xFFD1E8D1),
+    secondaryContainer = Color(0xFF253F25),
+    onSecondaryContainer = Color(0xFFD1E8D1),
+    tertiary = Color(0xFF80D080),
+    onTertiary = Color(0xFF0A1A0A),
+    tertiaryContainer = Color(0xFF004D00),
+    onTertiaryContainer = Color(0xFFB2E8B2),
+    background = Color(0xFF0A1A0A),
+    onBackground = Color(0xFFE8F5E8),
+    surface = Color(0xFF142814),
+    onSurface = Color(0xFFE8F5E8),
+    surfaceVariant = Color(0xFF1E3820),
+    onSurfaceVariant = Color(0xFFA8C8A8),
+    surfaceTint = Color(0xFF50C878),
+    inverseSurface = LightSurface,
+    inverseOnSurface = LightOnSurface,
+    error = Color(0xFFFF5252),
+    onError = Color.White,
+    errorContainer = Color(0xFF2A0A0A),
+    onErrorContainer = Color(0xFFFFB3B3),
+    outline = Color(0xFF2A4A2A),
+    outlineVariant = Color(0xFF1E3820),
+    scrim = Color.Black.copy(alpha = 0.8f)
+)
+
+private val SapphireEliteColorScheme = darkColorScheme(
+    primary = Color(0xFF3B82F6),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFF002766),
+    onPrimaryContainer = Color(0xFFE0ECFF),
+    secondary = Color(0xFF152238),
+    onSecondary = Color(0xFFD1D8E4),
+    secondaryContainer = Color(0xFF1E2E4A),
+    onSecondaryContainer = Color(0xFFD1D8E4),
+    tertiary = Color(0xFF60A5FA),
+    onTertiary = Color(0xFF0A1525),
+    tertiaryContainer = Color(0xFF003B7A),
+    onTertiaryContainer = Color(0xFFB2D4FF),
+    background = Color(0xFF0A0E1A),
+    onBackground = Color(0xFFE8ECF5),
+    surface = Color(0xFF12182E),
+    onSurface = Color(0xFFE8ECF5),
+    surfaceVariant = Color(0xFF1E2840),
+    onSurfaceVariant = Color(0xFFA8B8D4),
+    surfaceTint = Color(0xFF3B82F6),
+    inverseSurface = LightSurface,
+    inverseOnSurface = LightOnSurface,
+    error = Color(0xFFFF5252),
+    onError = Color.White,
+    errorContainer = Color(0xFF2A0A0A),
+    onErrorContainer = Color(0xFFFFB3B3),
+    outline = Color(0xFF2A3A5A),
+    outlineVariant = Color(0xFF1E2840),
+    scrim = Color.Black.copy(alpha = 0.8f)
+)
+
+private val AmethystDreamsColorScheme = darkColorScheme(
+    primary = Color(0xFFA78BFA),
+    onPrimary = Color.Black,
+    primaryContainer = Color(0xFF3A1C4A),
+    onPrimaryContainer = Color(0xFFF3E8FF),
+    secondary = Color(0xFF2A1A3A),
+    onSecondary = Color(0xFFD8D1E0),
+    secondaryContainer = Color(0xFF3A254A),
+    onSecondaryContainer = Color(0xFFD8D1E0),
+    tertiary = Color(0xFFC4B5FD),
+    onTertiary = Color(0xFF1A1025),
+    tertiaryContainer = Color(0xFF4A2C5A),
+    onTertiaryContainer = Color(0xFFE8D8FF),
+    background = Color(0xFF140A1E),
+    onBackground = Color(0xFFF0E8F5),
+    surface = Color(0xFF201430),
+    onSurface = Color(0xFFF0E8F5),
+    surfaceVariant = Color(0xFF2E1E40),
+    onSurfaceVariant = Color(0xFFB8A8C8),
+    surfaceTint = Color(0xFFA78BFA),
+    inverseSurface = LightSurface,
+    inverseOnSurface = LightOnSurface,
+    error = Color(0xFFFF5252),
+    onError = Color.White,
+    errorContainer = Color(0xFF2A0A0A),
+    onErrorContainer = Color(0xFFFFB3B3),
+    outline = Color(0xFF3A2A4A),
+    outlineVariant = Color(0xFF2E1E40),
+    scrim = Color.Black.copy(alpha = 0.8f)
+)
+
+private val CrimsonRoyaleColorScheme = darkColorScheme(
+    primary = Color(0xFFFF3333),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFF4A0000),
+    onPrimaryContainer = Color(0xFFFFE0E0),
+    secondary = Color(0xFF2A0A0A),
+    onSecondary = Color(0xFFE8D1D1),
+    secondaryContainer = Color(0xFF3A1414),
+    onSecondaryContainer = Color(0xFFE8D1D1),
+    tertiary = Color(0xFFFF6666),
+    onTertiary = Color(0xFF1A0A0A),
+    tertiaryContainer = Color(0xFF5A0000),
+    onTertiaryContainer = Color(0xFFFFB3B3),
+    background = Color(0xFF0D0000),
+    onBackground = Color(0xFFF5E8E8),
+    surface = Color(0xFF1A0A0A),
+    onSurface = Color(0xFFF5E8E8),
+    surfaceVariant = Color(0xFF2A1414),
+    onSurfaceVariant = Color(0xFFC8A8A8),
+    surfaceTint = Color(0xFFFF3333),
+    inverseSurface = LightSurface,
+    inverseOnSurface = LightOnSurface,
+    error = Color(0xFFFF0000),
+    onError = Color.White,
+    errorContainer = Color(0xFF2A0A0A),
+    onErrorContainer = Color(0xFFFFB3B3),
+    outline = Color(0xFF4A2A2A),
+    outlineVariant = Color(0xFF2A1414),
+    scrim = Color.Black.copy(alpha = 0.8f)
+)
+
 sealed class AppTheme(val key: String, val label: String, val requiresPremium: Boolean = false, val requiresStudent: Boolean = false) {
     data object System : AppTheme("system", "System Default")
     data object Light : AppTheme("light", "Light Watermelon")
     data object Dark : AppTheme("dark", "Dark Watermelon")
     data object Amoled : AppTheme("amoled", "Pure Black", requiresPremium = true)
     data object Student : AppTheme("student", "Student Teal", requiresStudent = true)
+    data object ObsidianGold : AppTheme("obsidian_gold", "Obsidian Gold", requiresPremium = true)
+    data object EmeraldDynasty : AppTheme("emerald_dynasty", "Emerald Dynasty", requiresPremium = true)
+    data object SapphireElite : AppTheme("sapphire_elite", "Sapphire Elite", requiresPremium = true)
+    data object AmethystDreams : AppTheme("amethyst_dreams", "Amethyst Dreams", requiresPremium = true)
+    data object CrimsonRoyale : AppTheme("crimson_royale", "Crimson Royale", requiresPremium = true)
 
     companion object {
-        val all: List<AppTheme> = listOf(System, Light, Dark, Amoled, Student)
+        val all: List<AppTheme> = listOf(System, Light, Dark, Amoled, Student, ObsidianGold, EmeraldDynasty, SapphireElite, AmethystDreams, CrimsonRoyale)
         fun fromKey(key: String): AppTheme = all.find { it.key == key } ?: System
     }
 }
@@ -163,6 +323,11 @@ fun WatermelonTheme(
         AppTheme.Dark -> DarkColorScheme
         AppTheme.Amoled -> AmoledColorScheme
         AppTheme.Student -> StudentColorScheme
+        AppTheme.ObsidianGold -> ObsidianGoldColorScheme
+        AppTheme.EmeraldDynasty -> EmeraldDynastyColorScheme
+        AppTheme.SapphireElite -> SapphireEliteColorScheme
+        AppTheme.AmethystDreams -> AmethystDreamsColorScheme
+        AppTheme.CrimsonRoyale -> CrimsonRoyaleColorScheme
         else -> if (isSystemDark) DarkColorScheme else LightColorScheme
     }
 

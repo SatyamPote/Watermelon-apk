@@ -85,6 +85,15 @@ fun ProfileScreen(
                 color = MaterialTheme.colorScheme.onBackground
             )
 
+            if (!user?.username.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "@${user!!.username}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {

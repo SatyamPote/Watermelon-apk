@@ -3,6 +3,7 @@ package com.watermelon.feature.player
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -10,10 +11,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,17 +27,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import android.app.Activity
 import android.app.DownloadManager
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Environment
+import android.view.WindowManager
 import android.widget.Toast
-import androidx.compose.material.icons.filled.Download
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import com.watermelon.core.designsystem.theme.WatermelonRed
@@ -47,10 +56,15 @@ fun PlayerScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
+    val haptic = LocalHapticFeedback.current
 
     val isPlaying = state.isPlaying
-    LaunchedEffect(isPlaying) {
-        while (isPlaying) {
+    var sliderDragValue by remember { mutableStateOf(0f) }
+    val sliderInteractionSource = remember { MutableInteractionSource() }
+    val isSliderDragging by sliderInteractionSource.collectIsDraggedAsState()
+
+    LaunchedEffect(isPlaying, isSliderDragging) {
+        while (isPlaying && !isSliderDragging) {
             delay(1000)
             viewModel.updatePosition()
         }
@@ -67,23 +81,66 @@ fun PlayerScreen(
         label = "artworkPulse"
     )
 
+    val sleepTimer by viewModel.sleepTimerMinutes.collectAsState()
+    var showTimerDialog by remember { mutableStateOf(false) }
+
+    val showPlaylistSheet by viewModel.showAddToPlaylistSheet.collectAsState()
+    val playlists by viewModel.playlists.collectAsState()
+    val playlistMessage by viewModel.addToPlaylistMessage.collectAsState()
+    val playlistSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(playlistMessage) {
+        playlistMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearAddToPlaylistMessage()
+        }
+    }
+
     val context = LocalContext.current
+    DisposableEffect(isPlaying) {
+        val window = (context as? Activity)?.window
+        if (isPlaying) {
+            window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.downloadEvent.collectLatest { song ->
             val url = song.audioUrl ?: return@collectLatest
+            val musicDir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC) ?: return@collectLatest
+            val destFile = java.io.File(musicDir, "${song.id}.mp3")
+            if (destFile.exists()) {
+                Toast.makeText(context, "Already downloaded", Toast.LENGTH_SHORT).show()
+                return@collectLatest
+            }
             val request = DownloadManager.Request(Uri.parse(url))
                 .setTitle(song.title)
                 .setDescription(song.artistName)
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "Watermelon/${song.id}.mp3")
+                .setDestinationUri(Uri.fromFile(destFile))
             val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
             dm.enqueue(request)
+            // Write metadata JSON alongside MP3 for display in downloads tab
+            try {
+                val meta = org.json.JSONObject().apply {
+                    put("title", song.title)
+                    put("artistName", song.artistName)
+                    put("coverUrl", song.coverUrl ?: "")
+                }
+                java.io.File(musicDir, "${song.id}.json").writeText(meta.toString())
+            } catch (_: Exception) { /* ignore meta write failure */ }
             Toast.makeText(context, "Download started: ${song.title}", Toast.LENGTH_SHORT).show()
         }
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Now Playing") },
@@ -107,8 +164,22 @@ fun PlayerScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    IconButton(onClick = { showTimerDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.Timer,
+                            contentDescription = "Sleep Timer",
+                            tint = if (sleepTimer != null) WatermelonRed else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = { viewModel.onAddToPlaylistClick() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
+                            contentDescription = "Add to Playlist",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     IconButton(onClick = onQueueClick) {
-                        Icon(Icons.Filled.QueueMusic, contentDescription = "Queue")
+                        Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -190,25 +261,31 @@ fun PlayerScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Seekbar with duration labels
+            // Seekbar with duration labels — tap or drag to seek
             val sliderValue = remember(state.positionMs, state.durationMs) {
                 if (state.durationMs > 0) state.positionMs.toFloat() / state.durationMs.toFloat() else 0f
             }
-            var sliderDragging by remember { mutableStateOf(false) }
-            var sliderDragValue by remember { mutableStateOf(0f) }
+
+            // Handles both tap-to-seek and drag-release via LaunchedEffect
+            LaunchedEffect(sliderDragValue, isSliderDragging) {
+                if (!isSliderDragging && state.durationMs > 0) {
+                    val currentValue = state.positionMs.toFloat() / state.durationMs.toFloat()
+                    if (kotlin.math.abs(sliderDragValue - currentValue) > 0.005f) {
+                        val target = (sliderDragValue * state.durationMs).toLong()
+                        viewModel.seekTo(target)
+                    }
+                }
+            }
 
             Slider(
-                value = if (sliderDragging) sliderDragValue else sliderValue.coerceIn(0f, 1f),
+                value = if (isSliderDragging) sliderDragValue.coerceIn(0f, 1f) else sliderValue.coerceIn(0f, 1f),
                 onValueChange = {
-                    sliderDragging = true
                     sliderDragValue = it.coerceIn(0f, 1f)
                 },
-                onValueChangeFinished = {
-                    val target = (sliderDragValue * state.durationMs).toLong()
-                    viewModel.seekTo(target)
-                    sliderDragging = false
-                },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                interactionSource = sliderInteractionSource,
                 colors = SliderDefaults.colors(
                     thumbColor = WatermelonRed,
                     activeTrackColor = WatermelonRed,
@@ -220,7 +297,7 @@ fun PlayerScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    formatDuration(if (sliderDragging) (sliderDragValue * state.durationMs).toLong() else state.positionMs),
+                    formatDuration(if (isSliderDragging) (sliderDragValue * state.durationMs).toLong() else state.positionMs),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -249,7 +326,10 @@ fun PlayerScreen(
                 }
 
                 IconButton(
-                    onClick = { viewModel.playPrevious() },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.playPrevious()
+                    },
                     enabled = state.hasPrevious,
                     modifier = Modifier.size(48.dp)
                 ) {
@@ -263,7 +343,10 @@ fun PlayerScreen(
 
                 // Main play button with red background
                 FilledIconButton(
-                    onClick = { viewModel.togglePlayPause() },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.togglePlayPause()
+                    },
                     modifier = Modifier.size(72.dp),
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = WatermelonRed,
@@ -287,7 +370,10 @@ fun PlayerScreen(
                 }
 
                 IconButton(
-                    onClick = { viewModel.playNext() },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.playNext()
+                    },
                     enabled = state.hasNext,
                     modifier = Modifier.size(48.dp)
                 ) {
@@ -362,15 +448,6 @@ fun PlayerScreen(
                     )
                 ) {
                     val lyricsScroll = rememberScrollState()
-                    LaunchedEffect(state.positionMs, lyrics) {
-                        if (lyrics.isNullOrBlank() || state.durationMs <= 0) return@LaunchedEffect
-                        val lines = lyrics.split("\n")
-                        val progress = state.positionMs.toFloat() / state.durationMs
-                        val targetLine = (progress * lines.size).toInt().coerceIn(0, lines.size - 1)
-                        val lineHeightPx = with(density) { 22.dp.toPx().toInt() }
-                        val target = (targetLine * lineHeightPx).coerceIn(0, lyricsScroll.maxValue)
-                        lyricsScroll.animateScrollTo(target, animationSpec = tween(500))
-                    }
                     Column(
                         modifier = Modifier
                             .padding(16.dp)
@@ -392,8 +469,132 @@ fun PlayerScreen(
                 }
             }
 
+            if (state.durationMs > 0) {
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedButton(
+                    onClick = {
+                        val shareText = buildString {
+                            append("Listening to \"${state.currentTitle}\" by ${state.currentArtist} on Watermelon ")
+                            append("🍉")
+                        }
+                        val sendIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                        }
+                        context.startActivity(Intent.createChooser(sendIntent, null))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Share,
+                        contentDescription = "Share",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Share this song")
+                }
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
         }
+    }
+
+    if (showPlaylistSheet) {
+        ModalBottomSheet(
+            onDismissRequest = viewModel::onDismissAddToPlaylist,
+            sheetState = playlistSheetState
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp)
+            ) {
+                Text(
+                    text = "Add to Playlist",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (playlists.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No playlists yet. Create one in Library.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    playlists.forEach { playlist ->
+                        ListItem(
+                            headlineContent = {
+                                Text(
+                                    playlist.name,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            },
+                            leadingContent = {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
+                                    contentDescription = null,
+                                    tint = WatermelonRed
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.onPlaylistSelected(playlist.id)
+                                }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showTimerDialog) {
+        AlertDialog(
+            onDismissRequest = { showTimerDialog = false },
+            title = { Text("Sleep Timer") },
+            text = {
+                Column {
+                    listOf(15, 30, 45, 60).forEach { mins ->
+                        TextButton(
+                            onClick = {
+                                viewModel.startSleepTimer(mins)
+                                showTimerDialog = false
+                            }
+                        ) {
+                            Text("$mins minutes")
+                        }
+                    }
+                    if (sleepTimer != null) {
+                        TextButton(
+                            onClick = {
+                                viewModel.cancelSleepTimer()
+                                showTimerDialog = false
+                            }
+                        ) {
+                            Text("Cancel Timer", color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showTimerDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
     }
 }
 

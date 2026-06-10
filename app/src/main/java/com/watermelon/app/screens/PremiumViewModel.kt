@@ -64,11 +64,11 @@ class PremiumViewModel @Inject constructor(
                 if (response.success && orderId != null) {
                     onOrderCreated(orderId)
                 } else {
-                    _error.value = response.message ?: "Failed to create order"
+                    _error.value = response.message ?: "Unable to start payment. Please try again."
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Create order failed")
-                _error.value = "Network error: ${e.localizedMessage}"
+                _error.value = "Payment service unavailable. Check your connection and try again."
             } finally {
                 _isLoading.value = false
             }
@@ -95,11 +95,11 @@ class PremiumViewModel @Inject constructor(
                     _isPremium.value = true
                     _error.value = null
                 } else {
-                    _error.value = response.message ?: "Payment verification failed"
+                    _error.value = response.message ?: "We couldn't confirm your payment. Contact support if charged."
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Payment verification failed")
-                _error.value = e.localizedMessage ?: "Verification error"
+                _error.value = "Payment verification failed. Please try again."
             } finally {
                 _isLoading.value = false
             }
@@ -107,7 +107,7 @@ class PremiumViewModel @Inject constructor(
     }
 
     fun onPaymentError(code: Int, message: String) {
-        _error.value = "Payment failed ($code): $message"
+        _error.value = "Payment was cancelled or declined. Please try again."
     }
 
     fun submitStudentVerification(email: String) {

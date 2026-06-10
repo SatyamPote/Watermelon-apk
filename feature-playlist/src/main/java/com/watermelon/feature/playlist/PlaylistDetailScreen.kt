@@ -13,9 +13,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.watermelon.core.designsystem.theme.WatermelonRed
 import com.watermelon.core.designsystem.theme.WatermelonSpacing
 import com.watermelon.domain.model.PlaylistSong
 import com.watermelon.domain.model.Song
@@ -53,7 +56,22 @@ fun PlaylistDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(playlist?.name ?: "Playlist") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                            tint = WatermelonRed
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = playlist?.name ?: "Playlist",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -123,31 +141,27 @@ fun PlaylistDetailScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(WatermelonSpacing.md)
             ) {
-                Button(
+                FilledIconButton(
                     onClick = {
                         val songs = playlist?.songs?.map { it.toSong() } ?: emptyList()
                         if (songs.isNotEmpty()) {
                             onPlayAllClick()
-                            // Trigger playback via a callback or global player
                         }
                     },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    enabled = !playlist?.songs.isNullOrEmpty()
+                    modifier = Modifier.size(48.dp),
+                    enabled = !playlist?.songs.isNullOrEmpty(),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = WatermelonRed
+                    )
                 ) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Play All")
+                    Icon(Icons.Filled.PlayArrow, contentDescription = "Play All", modifier = Modifier.size(24.dp))
                 }
-                OutlinedButton(
+                OutlinedIconButton(
                     onClick = onShuffleClick,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.size(48.dp),
                     enabled = !playlist?.songs.isNullOrEmpty()
                 ) {
-                    Icon(Icons.Filled.Shuffle, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Shuffle")
+                    Icon(Icons.Filled.Shuffle, contentDescription = "Shuffle", modifier = Modifier.size(24.dp))
                 }
             }
 

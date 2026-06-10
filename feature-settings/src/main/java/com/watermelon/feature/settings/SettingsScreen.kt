@@ -4,9 +4,12 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -279,6 +282,21 @@ private fun currentThemeLabel(context: Context): String {
     return AppTheme.fromKey(ThemeManager.get(context)).label
 }
 
+private fun themePreviewColor(theme: AppTheme): Color {
+    return when (theme) {
+        AppTheme.Light -> Color(0xFFDC2626)
+        AppTheme.Dark -> Color(0xFFE53935)
+        AppTheme.Amoled -> Color(0xFFE53935)
+        AppTheme.Student -> Color(0xFF20B2AA)
+        AppTheme.ObsidianGold -> Color(0xFFD4AF37)
+        AppTheme.EmeraldDynasty -> Color(0xFF50C878)
+        AppTheme.SapphireElite -> Color(0xFF3B82F6)
+        AppTheme.AmethystDreams -> Color(0xFFA78BFA)
+        AppTheme.CrimsonRoyale -> Color(0xFFFF3333)
+        else -> Color(0xFFDC2626)
+    }
+}
+
 @Composable
 private fun ThemeSelectorDialog(
     currentMode: String,
@@ -292,40 +310,59 @@ private fun ThemeSelectorDialog(
         title = { Text("Choose Theme") },
         text = {
             Column {
-                AppTheme.all.forEach { theme ->
-                    val locked = when {
-                        theme.requiresStudent -> currentPlan != SubscriptionPlan.STUDENT && currentPlan != SubscriptionPlan.PREMIUM_INDIVIDUAL && currentPlan != SubscriptionPlan.PREMIUM_FAMILY
-                        theme.requiresPremium -> currentPlan != SubscriptionPlan.PREMIUM_INDIVIDUAL && currentPlan != SubscriptionPlan.PREMIUM_FAMILY
-                        else -> false
-                    }
-                    val selected = currentMode == theme.key
+                AppTheme.all.chunked(2).forEach { rowThemes ->
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = !locked) {
-                                if (locked) onNavigateToPremium() else onSelect(theme.key)
-                            }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        RadioButton(
-                            selected = selected,
-                            onClick = {
-                                if (locked) onNavigateToPremium() else onSelect(theme.key)
-                            },
-                            enabled = !locked,
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = WatermelonRed,
-                                disabledSelectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = theme.label + if (locked) " (Locked)" else "",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (locked) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                            else MaterialTheme.colorScheme.onSurface
-                        )
+                        rowThemes.forEach { theme ->
+                            val locked = false // unlocked for testing
+                            val selected = currentMode == theme.key
+                            val previewColor = themePreviewColor(theme)
+                            val bgColor = if (selected) previewColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant
+                            Card(
+                                onClick = {
+                                    if (locked) onNavigateToPremium() else onSelect(theme.key)
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(vertical = 4.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = bgColor)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(previewColor)
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = theme.label,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (selected) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "✓",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = previewColor
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (rowThemes.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }
@@ -349,27 +386,32 @@ private fun AvatarPickerDialog(
         onDismissRequest = onDismiss,
         title = { Text("Pick Avatar Color") },
         text = {
-            LazyRow(
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(4),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(vertical = 8.dp)
+                modifier = Modifier.height(180.dp)
             ) {
                 items(AvatarColors.size) { index ->
                     val color = AvatarColors[index]
                     val selected = index == selectedIndex
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(56.dp)
                             .clip(CircleShape)
                             .background(color)
                             .clickable { onSelect(index) }
                             .then(
-                                if (selected) Modifier.padding(2.dp)
-                                    .background(Color.White, CircleShape)
-                                    .padding(2.dp)
-                                    .background(color, CircleShape)
-                                else Modifier
-                            )
-                    )
+                                if (selected) {
+                                    Modifier.border(3.dp, Color.White, CircleShape)
+                                } else Modifier
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selected) {
+                            Text("✓", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
                 }
             }
         },

@@ -1,6 +1,7 @@
 package com.watermelon.app
 
 import android.app.Application
+import coil.decode.SvgDecoder
 import coil.Coil
 import coil.ImageLoader
 import com.google.firebase.FirebaseApp
@@ -35,6 +36,9 @@ class WatermelonApplication : Application() {
         Coil.setImageLoader {
             ImageLoader.Builder(this@WatermelonApplication)
                 .crossfade(true)
+                .components {
+                    add(SvgDecoder.Factory())
+                }
                 .memoryCache {
                     coil.memory.MemoryCache.Builder(this@WatermelonApplication)
                         .maxSizePercent(0.25)

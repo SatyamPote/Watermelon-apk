@@ -67,10 +67,10 @@ fun WatermelonNavHost(
         navController = navController,
         startDestination = startDestination,
         modifier = modifier,
-        enterTransition = { slideInHorizontally(tween(300)) { it / 4 } + fadeIn(tween(300)) },
-        exitTransition = { slideOutHorizontally(tween(300)) { -it / 4 } + fadeOut(tween(300)) },
-        popEnterTransition = { slideInHorizontally(tween(300)) { -it / 4 } + fadeIn(tween(300)) },
-        popExitTransition = { slideOutHorizontally(tween(300)) { it / 4 } + fadeOut(tween(300)) }
+        enterTransition = { fadeIn(tween(150)) },
+        exitTransition = { fadeOut(tween(150)) },
+        popEnterTransition = { fadeIn(tween(150)) },
+        popExitTransition = { fadeOut(tween(150)) }
     ) {
         composable(Routes.SPLASH) {
             val authViewModel: AuthViewModel = hiltViewModel()

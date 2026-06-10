@@ -18,9 +18,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -54,7 +58,18 @@ fun RadioScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Radio") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.Radio,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = WatermelonRed
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Radio")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 )
@@ -66,12 +81,29 @@ fun RadioScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            TabRow(selectedTabIndex = uiState.selectedTab.ordinal) {
+            TabRow(
+                selectedTabIndex = uiState.selectedTab.ordinal,
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = WatermelonRed
+            ) {
+                val tabIcons = mapOf(
+                    RadioTab.BROWSE to Icons.Default.Explore,
+                    RadioTab.LANGUAGES to Icons.Default.Language,
+                    RadioTab.SEARCH to Icons.Default.Search,
+                    RadioTab.FAVORITES to Icons.Default.Favorite,
+                    RadioTab.RECENT to Icons.Default.History
+                )
                 RadioTab.entries.forEach { tab ->
                     Tab(
                         selected = uiState.selectedTab == tab,
                         onClick = { viewModel.selectTab(tab) },
-                        text = { Text(tab.label) }
+                        icon = {
+                            Icon(
+                                imageVector = tabIcons[tab] ?: Icons.Default.Explore,
+                                contentDescription = tab.label,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     )
                 }
             }

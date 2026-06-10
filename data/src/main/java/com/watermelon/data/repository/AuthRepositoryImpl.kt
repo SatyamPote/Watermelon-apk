@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import javax.inject.Inject
+import javax.inject.Singleton
 
 
 @Singleton
@@ -41,7 +43,7 @@ class AuthRepositoryImpl @Inject constructor(
                 client.postgrest.from("profiles").update(
                     UsernameUpdate(username = username)
                 ) {
-                    eq("id", user.id)
+                    filter { eq("id", user.id) }
                 }
             } catch (_: Exception) { /* profiles table may not have username column yet */ }
         }

@@ -244,7 +244,7 @@ class MusicCatalogRepositoryImpl @Inject constructor(
         val fullUrl = if (url.startsWith("http")) url else "https://www.youtube.com$url"
         val videoId = extractVideoId(fullUrl)
         val thumbUrl = thumbnails.orEmpty().maxByOrNull { it.height }?.url?.takeIf { it.isNotBlank() }
-            ?: "https://i.ytimg.com/vi/$videoId/maxresdefault.jpg"
+            ?: "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
         return Song(
             id = videoId,
             title = name,

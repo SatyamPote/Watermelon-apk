@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import dagger.Module
 import dagger.Provides
@@ -46,6 +48,15 @@ object MediaModule {
             }
         }
 
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                15_000,   // minBufferMs
+                50_000,   // maxBufferMs
+                1_000,    // bufferForPlaybackMs (start playing after 1s buffer)
+                2_000     // bufferForPlaybackAfterRebufferMs
+            )
+            .build()
+
         return ExoPlayer.Builder(context)
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(dataSourceFactory).setLoadErrorHandlingPolicy(loadErrorPolicy)
@@ -57,6 +68,8 @@ object MediaModule {
                     .build(),
                 true
             )
+            .setLoadControl(loadControl)
+            .setSeekParameters(SeekParameters.CLOSEST_SYNC)
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
