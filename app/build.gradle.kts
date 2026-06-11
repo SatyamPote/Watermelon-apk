@@ -95,6 +95,7 @@ dependencies {
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.session)
     implementation(libs.media3.ui)
+    implementation(libs.androidx.media)
 
     // yt-dlp init
     implementation(libs.youtubedl.android.library)

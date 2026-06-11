@@ -113,6 +113,7 @@ class PlaybackService : MediaSessionService() {
             .setSmallIconResourceId(R.drawable.app_logo)
             .build()
             .apply {
+                setMediaSessionToken(mediaSession!!.sessionCompatToken)
                 setPlayer(player)
                 setUseNextAction(true)
                 setUsePreviousAction(true)
