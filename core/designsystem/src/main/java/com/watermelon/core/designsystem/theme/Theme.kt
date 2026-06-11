@@ -1,6 +1,8 @@
 package com.watermelon.core.designsystem.theme
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -14,6 +16,15 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+
+fun Context.findActivity(): Activity? {
+    var current = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        current = current.baseContext
+    }
+    return null
+}
 
 private val DarkColorScheme = darkColorScheme(
     primary = WatermelonRed,
@@ -334,7 +345,8 @@ fun WatermelonTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
+            val activity = view.context.findActivity()
+            val window = activity?.window ?: return@SideEffect
             window.statusBarColor = colorScheme.background.toArgb()
             window.navigationBarColor = colorScheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars =

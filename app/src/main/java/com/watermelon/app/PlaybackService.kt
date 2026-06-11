@@ -19,8 +19,12 @@ import androidx.media3.ui.PlayerNotificationManager
 import androidx.palette.graphics.Palette
 import coil.ImageLoader
 import coil.request.ImageRequest
-
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -32,21 +36,27 @@ class PlaybackService : MediaSessionService() {
     private var notificationManager: PlayerNotificationManager? = null
     private var currentAccentColor: Int = 0
     private var sessionActivityPendingIntent: PendingIntent? = null
+    private var colorListener: Player.Listener? = null
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
         super.onCreate()
 
         ensureNotificationChannel()
 
-        sessionActivityPendingIntent = TaskStackBuilder.create(this).run {
-            addNextIntent(Intent(this@PlaybackService, MainActivity::class.java))
-            getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        } ?: PendingIntent.getActivity(
+        sessionActivityPendingIntent = runCatching {
+            TaskStackBuilder.create(this).run {
+                addNextIntent(Intent(this@PlaybackService, MainActivity::class.java))
+                getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            }
+        }.getOrNull() ?: PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
         )
 
         mediaSession = MediaSession.Builder(this, player)
-            .setSessionActivity(sessionActivityPendingIntent!!)
+            .setSessionActivity(sessionActivityPendingIntent ?: PendingIntent.getActivity(
+                this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
+            ))
             .build()
 
         setupCustomNotification()
@@ -113,7 +123,10 @@ class PlaybackService : MediaSessionService() {
             .setSmallIconResourceId(R.drawable.app_logo)
             .build()
             .apply {
-                setMediaSessionToken(mediaSession!!.sessionCompatToken)
+                val token = mediaSession?.sessionCompatToken
+                if (token != null) {
+                    setMediaSessionToken(token)
+                }
                 setPlayer(player)
                 setUseNextAction(true)
                 setUsePreviousAction(true)
@@ -126,18 +139,33 @@ class PlaybackService : MediaSessionService() {
 
     private fun startColorExtractionListener() {
         currentAccentColor = 0xFFE53935.toInt()
-        player.addListener(object : Player.Listener {
+        colorListener = object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
                 val uri = mediaItem?.mediaMetadata?.artworkUri
                 if (uri != null) {
                     loadBitmapAsync(uri) { bitmap ->
-                        extractColor(bitmap)
-                        // Force notification refresh
-                        notificationManager?.invalidate()
+                        extractColorAsync(bitmap)
                     }
                 }
             }
-        })
+        }
+        colorListener?.let { player.addListener(it) }
+    }
+
+    private fun extractColorAsync(bitmap: Bitmap) {
+        serviceScope.launch(Dispatchers.Default) {
+            try {
+                val palette = Palette.from(bitmap).generate()
+                val color = palette.getVibrantColor(currentAccentColor)
+                currentAccentColor = color
+                // Force notification refresh on main thread
+                launch(Dispatchers.Main) {
+                    notificationManager?.invalidate()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Palette extraction failed")
+            }
+        }
     }
 
     private fun loadBitmapAsync(uri: android.net.Uri, onLoaded: (Bitmap) -> Unit) {
@@ -158,15 +186,7 @@ class PlaybackService : MediaSessionService() {
         imageLoader.enqueue(request)
     }
 
-    private fun extractColor(bitmap: Bitmap) {
-        try {
-            val palette = Palette.from(bitmap).generate()
-            val color = palette.getVibrantColor(currentAccentColor)
-            currentAccentColor = color
-        } catch (e: Exception) {
-            Timber.e(e, "Palette extraction failed")
-        }
-    }
+
 
     private fun android.graphics.drawable.Drawable.toBitmap(): Bitmap {
         if (this is android.graphics.drawable.BitmapDrawable) return this.bitmap
@@ -191,6 +211,9 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        colorListener?.let { runCatching { player.removeListener(it) } }
+        colorListener = null
+        serviceScope.cancel()
         notificationManager?.setPlayer(null)
         runCatching {
             player.stop()

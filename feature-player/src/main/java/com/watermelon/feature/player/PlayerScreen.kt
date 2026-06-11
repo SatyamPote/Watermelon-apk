@@ -42,8 +42,10 @@ import android.net.Uri
 import android.os.Environment
 import android.view.WindowManager
 import android.widget.Toast
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.withContext
 import com.watermelon.core.designsystem.theme.WatermelonRed
 import com.watermelon.core.designsystem.theme.WatermelonRedDark
 
@@ -138,7 +140,9 @@ fun PlayerScreen(
                     put("artistName", song.artistName)
                     put("coverUrl", song.coverUrl ?: "")
                 }
-                java.io.File(musicDir, "${song.id}.json").writeText(meta.toString())
+                withContext(Dispatchers.IO) {
+                    java.io.File(musicDir, "${song.id}.json").writeText(meta.toString())
+                }
             } catch (_: Exception) { /* ignore meta write failure */ }
             Toast.makeText(context, "Download started: ${song.title}", Toast.LENGTH_SHORT).show()
         }

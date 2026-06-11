@@ -90,7 +90,11 @@ class MainActivity : ComponentActivity() {
                     LaunchedEffect(playerState.isPlaying) {
                         val intent = Intent(activity, PlaybackService::class.java)
                         if (playerState.isPlaying) {
-                            activity.startForegroundService(intent)
+                            try {
+                                activity.startForegroundService(intent)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to start foreground service")
+                            }
                         }
                     }
 

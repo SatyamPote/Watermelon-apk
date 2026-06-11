@@ -12,8 +12,10 @@ import io.github.jan.supabase.gotrue.SessionStatus
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -73,7 +75,9 @@ class AuthRepositoryImpl @Inject constructor(
             .addHeader("apikey", BuildConfig.SUPABASE_KEY)
             .post(body)
             .build()
-        val response = httpClient.newCall(request).execute()
+        val response = withContext(Dispatchers.IO) {
+            httpClient.newCall(request).execute()
+        }
         if (!response.isSuccessful) {
             throw IllegalStateException("Resend failed: ${response.code}")
         }
@@ -126,7 +130,9 @@ class AuthRepositoryImpl @Inject constructor(
             .addHeader("Content-Type", "application/json")
             .delete(body)
             .build()
-        val response = httpClient.newCall(request).execute()
+        val response = withContext(Dispatchers.IO) {
+            httpClient.newCall(request).execute()
+        }
         if (!response.isSuccessful) {
             val bodyString = response.body?.string() ?: ""
             throw IllegalStateException("Delete failed: ${response.code} - $bodyString")
@@ -218,7 +224,9 @@ class AuthRepositoryImpl @Inject constructor(
             username = email.substringBefore("@"),
             displayName = "User",
             avatarUrl = "https://api.dicebear.com/10.x/toon-head/svg?seed=$email",
-            plan = SubscriptionPlan.valueOf(planName ?: SubscriptionPlan.FREE.name)
+            plan = runCatching {
+                SubscriptionPlan.valueOf(planName ?: SubscriptionPlan.FREE.name)
+            }.getOrDefault(SubscriptionPlan.FREE)
         )
     }
 
